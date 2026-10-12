@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Booking System</title>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f8;color:#222}
+header{background:#173b57;color:white;text-align:center;padding:22px}
+nav{background:#24516e;text-align:center;padding:12px}
+button{background:#176b87;color:white;border:0;padding:10px;
+margin:4px;border-radius:5px;cursor:pointer}
+main{max-width:950px;margin:20px auto;background:white;padding:20px;
+border-radius:10px}
+input,select,textarea{padding:10px;margin:5px;max-width:95%}
+.hotel{border:1px solid #ddd;padding:15px;margin:12px 0;border-radius:8px}
+.hidden{display:none}
+.price{color:#087a51;font-weight:bold}
+</style>
+</head>
+<body>
+
+<header>
+<h1>StayEasy Hotel Booking</h1>
+<p>Find and book your perfect stay</p>
+</header>
+
+<nav>
+<button onclick="show('search')">Find Hotels</button>
+<button onclick="show('login')">Login</button>
+<button onclick="show('dashboard')">My Bookings</button>
+<button onclick="show('admin')">Admin</button>
+</nav>
+
+<main>
+<section id="search">
+<h2>Search Hotels</h2>
+<input id="destination" placeholder="Destination">
+<label>Check-in <input type="date" id="checkin"></label>
+<label>Check-out <input type="date" id="checkout"></label>
+<input type="number" id="guests" min="1" value="1" placeholder="Guests">
+<button onclick="searchHotels()">Search</button>
+<div id="hotelList"></div>
+</section>
+
+<section id="login" class="hidden">
+<h2>User Login</h2>
+<input id="username" placeholder="Enter your name">
+<button onclick="login()">Login</button>
+<p id="loginStatus"></p>
+</section>
+
+<section id="booking" class="hidden">
+<h2>Book Your Room</h2>
+<div id="bookingInfo"></div>
+<form onsubmit="confirmBooking(event)">
+<input id="guestName" placeholder="Full name" required>
+<input id="email" type="email" placeholder="Email address" required>
+<input id="phone" type="tel" placeholder="Phone number" required>
+<select id="roomType">
+<option value="Standard">Standard Room</option>
+<option value="Deluxe">Deluxe Room</option>
+<option value="Suite">Suite</option>
+</select>
+<button type="submit">Confirm Booking</button>
+</form>
+<p id="bookingStatus"></p>
+</section>
+
+<section id="dashboard" class="hidden">
+<h2>My Bookings</h2>
+<p id="dashboardUser">Please log in to view bookings.</p>
+<div id="myBookings"></div>
+</section>
+
+<section id="admin" class="hidden">
+<h2>Admin Panel</h2>
+<p>Demo password: admin123</p>
+<input type="password" id="adminPassword" placeholder="Admin password">
+<button onclick="adminLogin()">Login as Admin</button>
+<div id="adminPanel" class="hidden">
+<h3>Add Hotel</h3>
+<input id="hotelName" placeholder="Hotel name">
+<input id="hotelCity" placeholder="City">
+<input id="hotelPrice" type="number" min="1" placeholder="Price per night">
+<input id="hotelRooms" type="number" min="0" placeholder="Available rooms">
+<input id="hotelAmenities" placeholder="Amenities">
+<button onclick="addHotel()">Add Hotel</button>
+<h3>Hotel Inventory</h3>
+<div id="inventory"></div>
+<h3>All Bookings</h3>
+<div id="allBookings"></div>
+</div>
+</section>
+</main>
+
+<script>
+let hotels=JSON.parse(localStorage.getItem("hotels"))||[
+{id:1,name:"Grand Palace Hotel",city:"Chennai",price:2500,
+rooms:5,amenities:"Wi-Fi, AC, Restaurant",rating:4.5},
+{id:2,name:"Ocean View Resort",city:"Goa",price:4000,
+rooms:3,amenities:"Pool, Wi-Fi, Beach View",rating:4.7},
+{id:3,name:"City Comfort Inn",city:"Bangalore",price:1800,
+rooms:4,amenities:"Wi-Fi, AC, Parking",rating:4.1}
+];
+
+let bookings=JSON.parse(localStorage.getItem("bookings"))||[];
+let currentUser=sessionStorage.getItem("hotelUser")||"";
+let selectedHotel=null;
+
+function save(){
+localStorage.setItem("hotels",JSON.stringify(hotels));
+localStorage.setItem("bookings",JSON.stringify(bookings));
+}
+
+function show(id){
+document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+if(id==="search")searchHotels();
+if(id==="dashboard")displayBookings();
+if(id==="admin"&&!document.getElementById("adminPanel").classList.contains("hidden"))displayAdmin();
+}
+
+function searchHotels(){
+let city=document.getElementById("destination").value.toLowerCase();
+let guests=Number(document.getElementById("guests").value)||1;
+let list=document.getElementById("hotelList");
+list.innerHTML="";
+
+hotels.filter(h=>h.city.toLowerCase().includes(city)&&h.rooms>0)
+.forEach(h=>{
+list.innerHTML+=`<div class="hotel">
+<h3>${h.name}</h3>
+<p>Location: ${h.city}</p>
+<p>Amenities: ${h.amenities}</p>
+<p>Rating: ${h.rating} / 5</p>
+<p class="price">₹${h.price} per night</p>
+<p>Available rooms: ${h.rooms}</p>
+<button onclick="bookHotel(${h.id})">Book Now</button>
+</div>`;
+});
+if(!list.innerHTML)list.textContent="No hotels available for this search.";
+}
+
+function login(){
+let name=document.getElementById("username").value.trim();
+if(!name)return alert("Enter your name");
+currentUser=name;
+sessionStorage.setItem("hotelUser",name);
+document.getElementById("loginStatus").textContent="Welcome, "+name;
+}
+
+function bookHotel(id){
+selectedHotel=hotels.find(h=>h.id===id);
+if(!currentUser){alert("Please login first");show("login");return;}
+
+let ci=document.getElementById("checkin").value;
+let co=document.getElementById("checkout").value;
+let guests=Number(document.getElementById("guests").value);
+
+if(!ci||!co||new Date(ci)<new Date(new Date().toDateString())||
+new Date(co)<=new Date(ci)||guests<1){
+alert("Enter valid dates and guest count");return;
+}
+
+show("booking");
+document.getElementById("bookingInfo").textContent=
+selectedHotel.name+" | "+ci+" to "+co;
+document.getElementById("bookingStatus").textContent="";
+}
+
+function confirmBooking(e){
+e.preventDefault();
+if(!selectedHotel)return;
+
+let ci=document.getElementById("checkin").value;
+let co=document.getElementById("checkout").value;
+let guests=Number(document.getElementById("guests").value);
+let nights=(new Date(co)-new Date(ci))/86400000;
+
+if(selectedHotel.rooms<1)return alert("No rooms available");
+if(!currentUser)return alert("Please log in again");
+
+let name=document.getElementById("guestName").value.trim();
+let email=document.getElementById("email").value.trim();
+let phone=document.getElementById("phone").value.trim();
+let type=document.getElementById("roomType").value;
+
+if(!name||!email||!phone)return alert("Complete all fields");
+
+selectedHotel.rooms--;
+
+bookings.push({
+id:Date.now(),user:currentUser,hotel:selectedHotel.name,
+hotelId:selectedHotel.id,city:selectedHotel.city,
+checkin:ci,checkout:co,guests:guests,nights:nights,
+room:type,total:selectedHotel.price*nights,
+guest:name,email:email,phone:phone,
+status:"Confirmed",rating:0,review:""
+});
+
+save();
+document.getElementById("bookingStatus").textContent=
+"Booking confirmed! Total: ₹"+selectedHotel.price*nights+
+". Booking ID: "+bookings[bookings.length-1].id;
+e.target.reset();
+searchHotels();
+}
+
+function displayBookings(){
+document.getElementById("dashboardUser").textContent=
+currentUser?"Logged in as "+currentUser:"Please log in first.";
+let div=document.getElementById("myBookings");
+div.innerHTML="";
+bookings.filter(b=>b.user===currentUser).forEach(b=>{
+div.innerHTML+=`<div class="hotel">
+<h3>${b.hotel}</h3>
+<p>${b.checkin} to ${b.checkout}</p>
+<p>Room: ${b.room} | Guests: ${b.guests}</p>
+<p>Total: ₹${b.total} | ${b.status}</p>
+${b.status==="Confirmed"?`<button onclick="cancelBooking(${b.id})">Cancel</button>`:""}
+<h4>Review</h4>
+<select id="rating${b.id}">
+<option value="5">5 stars</option>
+<option value="4">4 stars</option>
+<option value="3">3 stars</option>
+<option value="2">2 stars</option>
+<option value="1">1 star</option>
+</select>
+<input id="review${b.id}" placeholder="Write a review">
+<button onclick="addReview(${b.id})">Submit Review</button>
+<p>${b.rating?b.rating+" stars: "+b.review:"No review submitted"}</p>
+</div>`;
+});
+}
+
+function cancelBooking(id){
+let b=bookings.find(x=>x.id===id&&x.user===currentUser);
+if(!b||b.status!=="Confirmed")return;
+b.status="Cancelled";
+let h=hotels.find(x=>x.id===b.hotelId);
+if(h)h.rooms++;
+save();displayBookings();searchHotels();
+}
+
+function addReview(id){
+let b=bookings.find(x=>x.id===id&&x.user===currentUser);
+if(!b)return;
+b.rating=Number(document.getElementById("rating"+id).value);
+b.review=document.getElementById("review"+id).value.trim();
+save();displayBookings();
+}
+
+function adminLogin(){
+if(document.getElementById("adminPassword").value==="admin123"){
+document.getElementById("adminPanel").classList.remove("hidden");
+displayAdmin();
+}else alert("Incorrect password");
+}
+
+function addHotel(){
+let name=document.getElementById("hotelName").value.trim();
+let city=document.getElementById("hotelCity").value.trim();
+let price=Number(document.getElementById("hotelPrice").value);
+let rooms=Number(document.getElementById("hotelRooms").value);
+let amenities=document.getElementById("hotelAmenities").value.trim();
+
+if(!name||!city||!amenities||price<=0||rooms<0||
+!Number.isInteger(rooms))return alert("Enter valid hotel details");
+
+hotels.push({id:Date.now(),name,city,price,rooms,amenities,rating:0});
+save();displayAdmin();searchHotels();
+}
+
+function displayAdmin(){
+document.getElementById("inventory").innerHTML=hotels.map(h=>
+`<div class="hotel"><b>${h.name}</b> — ${h.city},
+₹${h.price}, ${h.rooms} rooms
+<button onclick="deleteHotel(${h.id})">Delete</button></div>`
+).join("");
+
+document.getElementById("allBookings").innerHTML=bookings.map(b=>
+`<div class="hotel">${b.hotel} | ${b.guest} | ${b.checkin} to
+${b.checkout} | ₹${b.total} | ${b.status}</div>`
+).join("")||"No bookings yet.";
+}
+
+function deleteHotel(id){
+if(bookings.some(b=>b.hotelId===id&&b.status==="Confirmed"))
+return alert("Cannot delete a hotel with confirmed bookings");
+hotels=hotels.filter(h=>h.id!==id);
+save();displayAdmin();searchHotels();
+}
+
+document.getElementById("checkin").min=new Date().toLocaleDateString("en-CA");
+document.getElementById("checkout").min=new Date().toLocaleDateString("en-CA");
+searchHotels();
+</script>
+</body>
+</html>
