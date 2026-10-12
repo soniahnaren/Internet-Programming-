@@ -1,0 +1,290 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Train Reservation System</title>
+<style>
+body{font-family:Arial;margin:0;background:#f1f4f8;color:#222}
+header{background:#12385b;color:white;text-align:center;padding:20px}
+nav{background:#20527a;text-align:center;padding:10px}
+button{background:#1769aa;color:white;border:0;padding:10px;
+margin:4px;border-radius:5px;cursor:pointer}
+main{max-width:950px;margin:20px auto;background:white;padding:20px}
+input,select{padding:10px;margin:5px;max-width:95%}
+.train{border:1px solid #ddd;padding:15px;margin:12px 0;border-radius:8px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>RailBook</h1>
+<p>Online Train Reservation System</p>
+</header>
+
+<nav>
+<button onclick="show('search')">Search Trains</button>
+<button onclick="show('login')">Login</button>
+<button onclick="show('dashboard')">My Tickets</button>
+<button onclick="show('admin')">Admin</button>
+</nav>
+
+<main>
+<section id="search">
+<h2>Search Trains</h2>
+<input id="from" placeholder="From station">
+<input id="to" placeholder="To station">
+<input type="date" id="date">
+<button onclick="searchTrains()">Search</button>
+<div id="trainList"></div>
+</section>
+
+<section id="login" class="hidden">
+<h2>User Login</h2>
+<input id="username" placeholder="Enter your name">
+<button onclick="login()">Login</button>
+<p id="loginMessage"></p>
+</section>
+
+<section id="booking" class="hidden">
+<h2>Book Train Ticket</h2>
+<div id="trainInfo"></div>
+<form onsubmit="bookTicket(event)">
+<select id="travelClass">
+<option value="Sleeper">Sleeper</option>
+<option value="AC 3 Tier">AC 3 Tier</option>
+<option value="AC 2 Tier">AC 2 Tier</option>
+<option value="First AC">First AC</option>
+</select>
+<input id="passenger" placeholder="Passenger name" required>
+<input id="age" type="number" min="1" max="120" placeholder="Age" required>
+<input id="email" type="email" placeholder="Email" required>
+<button type="submit">Pay and Book (Demo)</button>
+</form>
+<p id="bookingMessage"></p>
+</section>
+
+<section id="dashboard" class="hidden">
+<h2>My Reservations</h2>
+<div id="myTickets"></div>
+</section>
+
+<section id="admin" class="hidden">
+<h2>Admin Panel</h2>
+<p>Demo password: admin123</p>
+<input id="adminPassword" type="password" placeholder="Admin password">
+<button onclick="adminLogin()">Login as Admin</button>
+<div id="adminPanel" class="hidden">
+<h3>Add Train</h3>
+<input id="trainName" placeholder="Train name">
+<input id="trainFrom" placeholder="Source">
+<input id="trainTo" placeholder="Destination">
+<input id="trainTime" type="time">
+<input id="trainDate" type="date">
+<input id="trainPrice" type="number" min="1" placeholder="Ticket price">
+<button onclick="addTrain()">Add Train</button>
+<h3>Train Schedule</h3>
+<div id="inventory"></div>
+<h3>All Reservations</h3>
+<div id="allTickets"></div>
+</div>
+</section>
+</main>
+
+<script>
+let trains=JSON.parse(localStorage.getItem("trains"))||[
+{id:1,name:"Chennai Express",from:"Chennai",to:"Bangalore",
+time:"06:00",date:"",price:500,seats:50,booked:[]},
+{id:2,name:"Pandian Express",from:"Chennai",to:"Madurai",
+time:"21:00",date:"",price:450,seats:50,booked:[]},
+{id:3,name:"Shatabdi Express",from:"Bangalore",to:"Chennai",
+time:"07:00",date:"",price:700,seats:50,booked:[]}
+];
+
+let tickets=JSON.parse(localStorage.getItem("tickets"))||[];
+let user=sessionStorage.getItem("trainUser")||"";
+let selectedTrain=null;
+
+function save(){
+localStorage.setItem("trains",JSON.stringify(trains));
+localStorage.setItem("tickets",JSON.stringify(tickets));
+}
+
+function show(id){
+document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+if(id==="search")searchTrains();
+if(id==="dashboard")displayTickets();
+if(id==="admin"&&!document.getElementById("adminPanel").classList.contains("hidden"))displayAdmin();
+}
+
+function searchTrains(){
+let from=document.getElementById("from").value.toLowerCase().trim();
+let to=document.getElementById("to").value.toLowerCase().trim();
+let date=document.getElementById("date").value;
+let list=document.getElementById("trainList");
+list.innerHTML="";
+
+trains.filter(t=>
+t.from.toLowerCase().includes(from)&&
+t.to.toLowerCase().includes(to)&&
+(!date||!t.date||t.date===date)
+).forEach(t=>{
+list.innerHTML+=`<div class="train">
+<h3>${t.name}</h3>
+<p>${t.from} → ${t.to} | ${t.time}</p>
+<p>Date: ${t.date||"Date selectable during search"}</p>
+<p>Available seats: ${t.seats-t.booked.length}</p>
+<p>Starting fare: ₹${t.price}</p>
+<button onclick="selectTrain(${t.id})">Reserve Ticket</button>
+</div>`;
+});
+if(!list.innerHTML)list.textContent="No trains found.";
+}
+
+function login(){
+let name=document.getElementById("username").value.trim();
+if(!name)return alert("Enter your name");
+user=name;
+sessionStorage.setItem("trainUser",name);
+document.getElementById("loginMessage").textContent="Welcome, "+name;
+}
+
+function selectTrain(id){
+if(!user){alert("Please login first");show("login");return;}
+selectedTrain=trains.find(t=>t.id===id);
+document.getElementById("trainInfo").textContent=
+selectedTrain.name+" | "+selectedTrain.from+" to "+selectedTrain.to;
+document.getElementById("bookingMessage").textContent="";
+show("booking");
+}
+
+function bookTicket(e){
+e.preventDefault();
+if(!selectedTrain)return;
+let travelDate=document.getElementById("date").value||selectedTrain.date;
+if(!travelDate)return alert("Select your journey date");
+if(new Date(travelDate)<new Date(new Date().toDateString()))
+return alert("Journey date cannot be in the past");
+if(selectedTrain.booked.length>=selectedTrain.seats)
+return alert("No seats available");
+
+let passenger=document.getElementById("passenger").value.trim();
+let age=Number(document.getElementById("age").value);
+let email=document.getElementById("email").value.trim();
+let cls=document.getElementById("travelClass").value;
+if(!passenger||age<1||age>120||!email)return alert("Enter valid details");
+
+let ticket={
+id:Date.now(),user:user,trainId:selectedTrain.id,
+train:selectedTrain.name,from:selectedTrain.from,to:selectedTrain.to,
+date:travelDate,time:selectedTrain.time,
+passenger:passenger,age:age,email:email,travelClass:cls,
+seat:selectedTrain.booked.length+1,price:selectedTrain.price,
+status:"Confirmed"
+};
+
+selectedTrain.booked.push(ticket.seat);
+tickets.push(ticket);
+save();
+document.getElementById("bookingMessage").textContent=
+"Booking successful! PNR: "+ticket.id+
+" | Seat: "+ticket.seat+" | Fare: ₹"+ticket.price;
+e.target.reset();
+searchTrains();
+}
+
+function displayTickets(){
+let list=document.getElementById("myTickets");
+list.innerHTML="";
+if(!user){list.textContent="Please log in to view tickets.";return;}
+let mine=tickets.filter(t=>t.user===user);
+if(!mine.length){list.textContent="No reservations yet.";return;}
+
+mine.forEach(t=>{
+list.innerHTML+=`<div class="train">
+<h3>${t.train}</h3>
+<p>PNR: ${t.id}</p>
+<p>${t.from} → ${t.to}</p>
+<p>Date: ${t.date} | Departure: ${t.time}</p>
+<p>Passenger: ${t.passenger} | Class: ${t.travelClass}</p>
+<p>Seat: ${t.seat} | Fare: ₹${t.price} | ${t.status}</p>
+<button onclick="printTicket(${t.id})">Print Ticket</button>
+${t.status==="Confirmed"?`<button onclick="cancelTicket(${t.id})">Cancel</button>`:""}
+</div>`;
+});
+}
+
+function printTicket(id){
+let t=tickets.find(x=>x.id===id&&x.user===user);
+if(!t)return;
+let w=window.open("","_blank");
+if(!w)return alert("Allow pop-ups to print the ticket");
+w.document.write(`<h1>RailBook E-Ticket</h1>
+<p>PNR: ${t.id}</p><p>Train: ${t.train}</p>
+<p>Route: ${t.from} to ${t.to}</p><p>Date: ${t.date}</p>
+<p>Time: ${t.time}</p><p>Passenger: ${t.passenger}</p>
+<p>Class: ${t.travelClass}</p><p>Seat: ${t.seat}</p>
+<p>Fare: ₹${t.price}</p><p>Status: ${t.status}</p>`);
+w.document.close();w.print();
+}
+
+function cancelTicket(id){
+let t=tickets.find(x=>x.id===id&&x.user===user);
+if(!t||t.status!=="Confirmed")return;
+t.status="Cancelled";
+let train=trains.find(x=>x.id===t.trainId);
+if(train)train.booked=train.booked.filter(s=>s!==t.seat);
+save();displayTickets();searchTrains();
+}
+
+function adminLogin(){
+if(document.getElementById("adminPassword").value==="admin123"){
+document.getElementById("adminPanel").classList.remove("hidden");
+displayAdmin();
+}else alert("Incorrect admin password");
+}
+
+function addTrain(){
+let name=document.getElementById("trainName").value.trim();
+let from=document.getElementById("trainFrom").value.trim();
+let to=document.getElementById("trainTo").value.trim();
+let time=document.getElementById("trainTime").value;
+let date=document.getElementById("trainDate").value;
+let price=Number(document.getElementById("trainPrice").value);
+
+if(!name||!from||!to||!time||!date||price<=0)
+return alert("Enter valid train details");
+
+trains.push({id:Date.now(),name,from,to,time,date,price,seats:50,booked:[]});
+save();displayAdmin();searchTrains();
+}
+
+function displayAdmin(){
+document.getElementById("inventory").innerHTML=trains.map(t=>
+`<div class="train">${t.name}: ${t.from} → ${t.to},
+${t.date||"Flexible date"} at ${t.time},
+Available seats: ${t.seats-t.booked.length}
+<button onclick="deleteTrain(${t.id})">Delete</button></div>`
+).join("");
+
+document.getElementById("allTickets").innerHTML=tickets.map(t=>
+`<div class="train">PNR ${t.id} | ${t.passenger} | ${t.train} |
+${t.date} | ${t.status}</div>`
+).join("")||"No bookings yet.";
+}
+
+function deleteTrain(id){
+if(tickets.some(t=>t.trainId===id&&t.status==="Confirmed"))
+return alert("Cancel confirmed reservations before deleting");
+trains=trains.filter(t=>t.id!==id);
+save();displayAdmin();searchTrains();
+}
+
+document.getElementById("date").min=new Date().toLocaleDateString("en-CA");
+document.getElementById("trainDate").min=new Date().toLocaleDateString("en-CA");
+searchTrains();
+</script>
+</body>
+</html>
