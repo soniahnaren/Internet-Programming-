@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 10 - StyleHub Fashion</title>
+<style>
+  body { font-family: "Gill Sans", "Gill Sans MT", Calibri, sans-serif; margin: 0; background: #faf9f7; color: #1c1c1c; font-size: 15px; }
+  header { background: #1c1c1c; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 24px; letter-spacing: 1px; }
+  button { background: #1c1c1c; color: #fff; border: 0; padding: 7px 12px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #1c1c1c; }
+  .red { background: #a8322d; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #ddd; max-width: 480px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; font-family: inherit; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+  th { background: #efece7; }
+  .flash { background: #a8322d; color: #fff; padding: 10px 15px; margin-bottom: 12px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters > * { flex: 1; min-width: 110px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 10px; }
+  .card { background: #fff; border: 1px solid #ddd; padding: 10px; }
+  .pic { height: 150px; background: #efece7; display: flex; align-items: center; justify-content: center; font-size: 60px; overflow: hidden; }
+  .pic img { width: 100%; height: 100%; object-fit: cover; }
+  .off { color: #a8322d; font-weight: bold; }
+  s { color: #888; }
+</style>
+</head>
+<body>
+<header><h1>StyleHub</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <div id="flashBar"></div>
+  <div class="filters">
+    <input id="q" placeholder="Search clothing, footwear..." oninput="r_home()">
+    <select id="fg" onchange="r_home()"><option value="">Men, Women and Kids</option><option>Men</option><option>Women</option><option>Kids</option></select>
+    <select id="fc" onchange="r_home()"></select>
+    <select id="fs" onchange="r_home()"><option value="">Any size</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>6</option><option>7</option><option>8</option><option>9</option></select>
+    <select id="fp" onchange="r_home()"><option value="">Any price</option><option value="0-999">Under Rs. 1000</option><option value="1000-2499">Rs. 1000 - 2499</option><option value="2500-99999">Rs. 2500 and above</option></select>
+  </div>
+  <div class="grid" id="prodGrid"></div>
+  <div id="recoBox"></div>
+</section>
+
+<section id="detail" hidden>
+  <div class="box" id="dBox" style="max-width:650px"></div>
+  <details class="box"><summary>Size guide</summary>
+    <table><tr><th>Size</th><th>Chest (in)</th><th>Waist (in)</th></tr>
+      <tr><td>XS</td><td>34</td><td>28</td></tr><tr><td>S</td><td>36</td><td>30</td></tr><tr><td>M</td><td>38</td><td>32</td></tr>
+      <tr><td>L</td><td>40</td><td>34</td></tr><tr><td>XL</td><td>42</td><td>36</td></tr></table>
+    <p>Footwear sizes are UK sizes.</p>
+  </details>
+  <h3>Customer Reviews</h3><div id="dReviews"></div>
+  <form onsubmit="addReview(event)" id="rvForm">
+    <select id="rvR"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="rvT" placeholder="How was the fit and quality?" required></textarea>
+    <button>Post Review</button>
+  </form>
+</section>
+
+<section id="cart" hidden>
+  <h2>Shopping Bag</h2>
+  <div id="cartBox"></div>
+  <form onsubmit="checkout(event)">
+    <h3>Check Out</h3>
+    <input id="coN" placeholder="Name" required><input id="coPh" placeholder="Phone" required>
+    <textarea id="coA" placeholder="Delivery address" required></textarea>
+    <input id="coC" placeholder="Coupon code (try STYLE15)">
+    Payment <select id="coP"><option>Card</option><option>UPI</option><option>Net Banking</option><option>Cash on Delivery</option></select>
+    <p id="coTotal"></p>
+    <button>Place Order</button>
+  </form>
+</section>
+
+<section id="wishlist" hidden><h2>Wish List</h2><div class="grid" id="wishGrid"></div></section>
+
+<section id="orders" hidden>
+  <h2>My Orders</h2>
+  <p>Returns and exchanges are accepted within 7 days of delivery.</p>
+  <div id="orderBox"></div>
+</section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required><input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required><input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<!-- ADMIN -->
+<section id="items" hidden>
+  <h2>Add / Edit Item</h2>
+  <form onsubmit="saveItem(event)">
+    <input type="hidden" id="iid">
+    <input id="iname" placeholder="Item name" required>
+    <select id="igen"><option>Men</option><option>Women</option><option>Kids</option></select>
+    <input id="icat" placeholder="Category (Casual Wear, Formal, Footwear, Seasonal...)" required>
+    <input id="isizes" placeholder="Sizes, comma separated (S,M,L or 7,8,9)" required>
+    <input type="number" id="iprice" placeholder="Price" required>
+    <input type="number" id="idisc" placeholder="Discount %" value="0">
+    <input type="number" id="istock" placeholder="Stock" required>
+    <input id="iimg" placeholder="Image URL (or leave empty for icon)">
+    <input id="iicon" placeholder="Icon emoji" value="👕">
+    <textarea id="idesc" placeholder="Description, fabric, care" required></textarea>
+    <label><input type="checkbox" id="iflash" style="width:auto"> Include in flash sale</label>
+    <button>Save Item</button>
+  </form>
+  <div id="itemList"></div>
+  <h2>Flash Sale</h2>
+  <form onsubmit="saveFlash(event)">
+    Extra discount % <input type="number" id="flPct" required>
+    Ends at <input type="datetime-local" id="flEnd" required>
+    <button>Start Flash Sale</button>
+  </form>
+</section>
+
+<section id="customers" hidden>
+  <h2>Orders, Returns and Exchanges</h2><div id="allOrders"></div>
+  <h2>Customers Who Checked Out</h2><div id="custList"></div>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const STATUSES = ['Ordered', 'Packed', 'Shipped', 'Delivered', 'Return Requested', 'Exchange Requested', 'Returned', 'Exchanged', 'Cancelled'];
+const COUPONS = { STYLE15: 15, FIRST10: 10 };
+
+if (!db.get('sh_items')) db.set('sh_items', [
+  { id: 1, name: 'Linen Casual Shirt', gen: 'Men', cat: 'Casual Wear', sizes: 'S,M,L,XL', price: 1499, disc: 20, stock: 15, img: '', icon: '👕', flash: true, desc: 'Breathable linen, regular fit. Machine wash cold.' },
+  { id: 2, name: 'Slim Fit Blazer', gen: 'Men', cat: 'Formal', sizes: 'M,L,XL', price: 4999, disc: 10, stock: 5, img: '', icon: '🧥', flash: false, desc: 'Poly-viscose blend, two buttons, notch lapel.' },
+  { id: 3, name: 'Floral Midi Dress', gen: 'Women', cat: 'Casual Wear', sizes: 'XS,S,M,L', price: 1999, disc: 25, stock: 10, img: '', icon: '👗', flash: true, desc: 'Rayon, flared hem, short sleeves.' },
+  { id: 4, name: 'Woollen Cardigan', gen: 'Women', cat: 'Seasonal', sizes: 'S,M,L', price: 2299, disc: 0, stock: 6, img: '', icon: '🧶', flash: false, desc: 'Soft acrylic wool, button front. Hand wash.' },
+  { id: 5, name: 'Running Shoes', gen: 'Men', cat: 'Footwear', sizes: '6,7,8,9', price: 2999, disc: 30, stock: 12, img: '', icon: '👟', flash: true, desc: 'Cushioned sole, mesh upper.' },
+  { id: 6, name: 'Kids Denim Dungaree', gen: 'Kids', cat: 'Casual Wear', sizes: 'XS,S', price: 899, disc: 10, stock: 8, img: '', icon: '👖', flash: false, desc: 'Soft cotton denim, adjustable straps.' }
+]);
+let me = db.get('sh_session', null), curItem = null;
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Shop']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['items', 'Items & Sale'], ['customers', 'Orders & Customers']);
+  else b.push(['cart', 'Bag (' + db.get('sh_cart_' + me.user, []).length + ')'], ['wishlist', 'Wish List'], ['orders', 'My Orders']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+const item = id => db.get('sh_items').find(i => i.id === id);
+const flashOn = () => { const f = db.get('sh_flash', null); return f && new Date(f.end) > new Date() ? f : null; };
+function discount(i) { const f = flashOn(); return Math.min(90, i.disc + (f && i.flash ? f.pct : 0)); }
+const finalPrice = i => Math.round(i.price * (100 - discount(i)) / 100);
+const priceHtml = i => discount(i) ? `<s>Rs. ${i.price}</s> <b>Rs. ${finalPrice(i)}</b> <span class="off">${discount(i)}% off</span>` : `<b>Rs. ${i.price}</b>`;
+const pic = i => `<div class="pic">${i.img ? `<img src="${i.img}" alt="${i.name}">` : i.icon}</div>`;
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('sh_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, pass: $('rp').value });
+  db.set('sh_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('sh_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('sh_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'items' : 'home');
+}
+function logout() { me = null; localStorage.removeItem('sh_session'); nav(); show('home'); }
+
+// ---------- catalogue ----------
+function card(i, extra = '') {
+  return `<div class="card">${pic(i)}<b>${i.name}</b><br>${i.gen} / ${i.cat}<br>${priceHtml(i)}<br>Sizes: ${i.sizes}<br>
+    <button onclick="openItem(${i.id})">View</button>${extra}</div>`;
+}
+let timer = null;
+function r_home() {
+  const items = db.get('sh_items');
+  if (!$('fc').options.length) $('fc').innerHTML = '<option value="">All categories</option>' + [...new Set(items.map(i => i.cat))].map(c => `<option>${c}</option>`).join('');
+  const f = flashOn();
+  clearInterval(timer);
+  if (f) {
+    const tick = () => { const ms = new Date(f.end) - new Date(); if (ms <= 0) { clearInterval(timer); return r_home(); }
+      const h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000);
+      $('flashBar').innerHTML = `<div class="flash">Flash sale: extra ${f.pct}% off selected styles. Ends in ${h}h ${m}m ${s}s</div>`; };
+    tick(); timer = setInterval(tick, 1000);
+  } else $('flashBar').innerHTML = '';
+  const q = $('q').value.toLowerCase(), g = $('fg').value, c = $('fc').value, s = $('fs').value;
+  const [min, max] = $('fp').value ? $('fp').value.split('-').map(Number) : [0, Infinity];
+  const list = items.filter(i => (i.name + i.desc + i.cat).toLowerCase().includes(q) && (!g || i.gen === g) && (!c || i.cat === c) &&
+    (!s || i.sizes.split(',').includes(s)) && finalPrice(i) >= min && finalPrice(i) <= max);
+  $('prodGrid').innerHTML = list.map(i => card(i)).join('') || '<p>No styles match these filters.</p>';
+  if (me && me.role === 'user') {
+    const seen = db.get('sh_seen_' + me.user, []);
+    const bought = db.get('sh_orders', []).filter(o => o.user === me.user).flatMap(o => o.items.map(x => x.id));
+    const liked = [...seen, ...bought].map(item).filter(Boolean);
+    const reco = items.filter(i => liked.some(l => l.cat === i.cat || l.gen === i.gen) && !bought.includes(i.id) && !seen.includes(i.id)).slice(0, 4);
+    $('recoBox').innerHTML = reco.length ? '<h2>Picked for Your Style</h2><div class="grid">' + reco.map(i => card(i)).join('') + '</div>' : '';
+  } else $('recoBox').innerHTML = '';
+}
+function openItem(id) {
+  curItem = item(id);
+  if (me && me.role === 'user') { const s = db.get('sh_seen_' + me.user, []); if (!s.includes(id)) { s.push(id); db.set('sh_seen_' + me.user, s); } }
+  $('dBox').innerHTML = `${pic(curItem)}<h2>${curItem.name}</h2><p>${curItem.desc}</p><p>${curItem.gen} / ${curItem.cat}</p><p>${priceHtml(curItem)}</p>
+    <p>${curItem.stock > 0 ? curItem.stock + ' in stock' : '<span class="off">Out of stock</span>'}</p>` +
+    (curItem.stock > 0 ? `Size <select id="dsz">${curItem.sizes.split(',').map(s => `<option>${s}</option>`).join('')}</select>
+    Qty <input type="number" id="dq" value="1" min="1" max="${curItem.stock}"><button onclick="addToCart()">Add to Bag</button>` : '') +
+    `<button onclick="toggleWish(${curItem.id})">Add to Wish List</button>`;
+  const r = db.get('sh_reviews', []).filter(x => x.id === id);
+  $('dReviews').innerHTML = r.map(x => `<p>${'★'.repeat(x.rate)} ${x.text} <i>- ${x.user}</i></p>`).join('') || '<p>No reviews yet.</p>';
+  $('rvForm').hidden = !(me && me.role === 'user');
+  show('detail');
+}
+function addReview(e) {
+  e.preventDefault();
+  const r = db.get('sh_reviews', []);
+  r.push({ id: curItem.id, user: me.user, rate: +$('rvR').value, text: $('rvT').value });
+  db.set('sh_reviews', r); e.target.reset(); openItem(curItem.id);
+}
+
+// ---------- bag ----------
+function needUser() { if (!me || me.role !== 'user') { alert('Please login first'); show('login'); return false; } return true; }
+function addToCart() {
+  if (!needUser()) return;
+  const cart = db.get('sh_cart_' + me.user, []), qty = +$('dq').value, size = $('dsz').value;
+  const line = cart.find(c => c.id === curItem.id && c.size === size);
+  const inBag = cart.filter(c => c.id === curItem.id).reduce((s, c) => s + c.qty, 0);
+  if (inBag + qty > curItem.stock) return alert('Only ' + curItem.stock + ' available');
+  if (line) line.qty += qty; else cart.push({ key: Date.now(), id: curItem.id, size, qty });
+  db.set('sh_cart_' + me.user, cart); nav(); alert('Added to bag');
+}
+function totals(cart, coupon) {
+  const sub = cart.reduce((s, c) => s + finalPrice(item(c.id)) * c.qty, 0);
+  const off = COUPONS[(coupon || '').toUpperCase()] || 0;
+  return { sub, off, total: Math.round(sub * (100 - off) / 100) };
+}
+function r_cart() {
+  const cart = db.get('sh_cart_' + me.user, []).filter(c => item(c.id));
+  $('cartBox').innerHTML = cart.length ? '<table><tr><th>Item</th><th>Size</th><th>Price</th><th>Qty</th><th>Total</th><th></th></tr>' +
+    cart.map(c => { const i = item(c.id); return `<tr><td>${i.icon} ${i.name}</td>
+    <td><select onchange="editLine(${c.key}, 'size', this.value)">${i.sizes.split(',').map(s => `<option ${s === c.size ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+    <td>Rs. ${finalPrice(i)}</td><td><input type="number" min="1" max="${i.stock}" value="${c.qty}" style="width:60px" onchange="editLine(${c.key}, 'qty', +this.value)"></td>
+    <td>Rs. ${finalPrice(i) * c.qty}</td><td><button class="red" onclick="removeLine(${c.key})">Remove</button></td></tr>`; }).join('') + '</table>' : '<p>Your bag is empty.</p>';
+  const t = totals(cart, $('coC').value);
+  $('coTotal').textContent = `Subtotal Rs. ${t.sub}${t.off ? ` | Coupon ${t.off}% off` : ''} | Total Rs. ${t.total}`;
+  $('coC').oninput = r_cart;
+}
+function editLine(key, field, val) {
+  const cart = db.get('sh_cart_' + me.user, []), line = cart.find(c => c.key === key);
+  line[field] = field === 'qty' ? Math.min(Math.max(1, val), item(line.id).stock) : val;
+  db.set('sh_cart_' + me.user, cart); r_cart();
+}
+function removeLine(key) { db.set('sh_cart_' + me.user, db.get('sh_cart_' + me.user, []).filter(c => c.key !== key)); nav(); r_cart(); }
+function checkout(e) {
+  e.preventDefault();
+  const cart = db.get('sh_cart_' + me.user, []).filter(c => item(c.id));
+  if (!cart.length) return alert('Your bag is empty');
+  const items = db.get('sh_items');
+  for (const c of cart) if (items.find(i => i.id === c.id).stock < c.qty) return alert('Not enough stock for ' + item(c.id).name);
+  cart.forEach(c => items.find(i => i.id === c.id).stock -= c.qty);
+  db.set('sh_items', items);
+  const t = totals(cart, $('coC').value);
+  const orders = db.get('sh_orders', []);
+  orders.push({ id: 'SH' + String(Date.now()).slice(-6), user: me.user, name: $('coN').value, phone: $('coPh').value, addr: $('coA').value,
+    items: cart.map(c => ({ id: c.id, name: item(c.id).name, size: c.size, qty: c.qty, price: finalPrice(item(c.id)) })),
+    total: t.total, pay: $('coP').value, status: 'Ordered', date: today(), delivered: null, note: '' });
+  db.set('sh_orders', orders); db.set('sh_cart_' + me.user, []);
+  e.target.reset(); nav(); alert('Order placed. Confirmation sent by email.'); show('orders');
+}
+function canReturn(o) { return o.status === 'Delivered' && o.delivered && (new Date() - new Date(o.delivered)) / 86400000 <= 7; }
+function orderTable(list, admin) {
+  if (!list.length) return '<p>No orders yet.</p>';
+  return '<table><tr><th>Order</th><th>Date</th>' + (admin ? '<th>Customer</th>' : '') + '<th>Items</th><th>Total</th><th>Status</th><th></th></tr>' +
+    list.map(o => `<tr><td>${o.id}</td><td>${o.date}</td>${admin ? `<td>${o.name}<br>${o.phone}<br>${o.addr}</td>` : ''}
+    <td>${o.items.map(x => `${x.name} (${x.size}) x${x.qty}`).join('<br>')}</td><td>Rs. ${o.total}<br>${o.pay}</td><td>` +
+    (admin ? `<select onchange="setOrder('${o.id}', this.value)">${STATUSES.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`
+           : o.status) + `${o.note ? '<br><i>' + o.note + '</i>' : ''}</td><td>` +
+    (!admin && canReturn(o) ? `<button onclick="requestReturn('${o.id}','Return')">Return</button><button onclick="requestReturn('${o.id}','Exchange')">Exchange</button>` : '') +
+    (!admin && o.status === 'Ordered' ? `<button class="red" onclick="setOrder('${o.id}','Cancelled')">Cancel</button>` : '') + '</td></tr>').join('') + '</table>';
+}
+function r_orders() { $('orderBox').innerHTML = orderTable(db.get('sh_orders', []).filter(o => o.user === me.user).reverse()); }
+function requestReturn(id, type) {
+  const reason = prompt(type + ' reason (e.g. size too small, want size L):');
+  if (!reason) return;
+  const o = db.get('sh_orders', []), ord = o.find(x => x.id === id);
+  ord.status = type + ' Requested'; ord.note = reason;
+  db.set('sh_orders', o); alert(type + ' request sent'); r_orders();
+}
+
+// ---------- wish list ----------
+function toggleWish(id) {
+  if (!needUser()) return;
+  let w = db.get('sh_wish_' + me.user, []);
+  w = w.includes(id) ? w.filter(x => x !== id) : [...w, id];
+  db.set('sh_wish_' + me.user, w); alert(w.includes(id) ? 'Added to wish list' : 'Removed from wish list');
+}
+function r_wishlist() {
+  const w = db.get('sh_wish_' + me.user, []).map(item).filter(Boolean);
+  $('wishGrid').innerHTML = w.map(i => card(i, `<button class="red" onclick="toggleWish(${i.id}); r_wishlist()">Remove</button>`)).join('') || '<p>Your wish list is empty.</p>';
+}
+
+// ---------- admin ----------
+const iFields = { iname: 'name', igen: 'gen', icat: 'cat', isizes: 'sizes', iprice: 'price', idisc: 'disc', istock: 'stock', iimg: 'img', iicon: 'icon', idesc: 'desc' };
+function r_items() {
+  $('itemList').innerHTML = '<table><tr><th>Item</th><th>For</th><th>Category</th><th>Price</th><th>Disc.</th><th>Stock</th><th>Flash</th><th></th></tr>' +
+    db.get('sh_items').map(i => `<tr><td>${i.icon} ${i.name}</td><td>${i.gen}</td><td>${i.cat}</td><td>Rs. ${i.price}</td><td>${i.disc}%</td><td>${i.stock}</td><td>${i.flash ? 'Yes' : '-'}</td>
+    <td><button onclick="editItem(${i.id})">Edit</button><button class="red" onclick="delItem(${i.id})">Remove</button></td></tr>`).join('') + '</table>';
+}
+function saveItem(e) {
+  e.preventDefault();
+  const items = db.get('sh_items'), data = { flash: $('iflash').checked };
+  for (const k in iFields) data[iFields[k]] = $(k).value;
+  ['price', 'disc', 'stock'].forEach(k => data[k] = +data[k]);
+  data.sizes = data.sizes.split(',').map(s => s.trim()).join(',');
+  if ($('iid').value) Object.assign(items.find(i => i.id == $('iid').value), data); else items.push({ id: Date.now(), ...data });
+  db.set('sh_items', items); e.target.reset(); $('iid').value = ''; $('fc').innerHTML = ''; r_items();
+}
+function editItem(id) { const i = item(id); $('iid').value = id; for (const k in iFields) $(k).value = i[iFields[k]]; $('iflash').checked = i.flash; window.scrollTo(0, 0); }
+function delItem(id) { if (confirm('Remove this item?')) { db.set('sh_items', db.get('sh_items').filter(i => i.id !== id)); $('fc').innerHTML = ''; r_items(); } }
+function saveFlash(e) { e.preventDefault(); db.set('sh_flash', { pct: +$('flPct').value, end: $('flEnd').value }); alert('Flash sale started'); }
+function setOrder(id, st) {
+  const o = db.get('sh_orders', []), ord = o.find(x => x.id === id);
+  ord.status = st; if (st === 'Delivered') ord.delivered = today();
+  db.set('sh_orders', o);
+  if (me.role === 'user') r_orders();
+}
+function r_customers() {
+  const o = db.get('sh_orders', []);
+  $('allOrders').innerHTML = orderTable([...o].reverse(), true);
+  const users = db.get('sh_users', []);
+  const buyers = [...new Set(o.map(x => x.user))];
+  $('custList').innerHTML = buyers.length ? '<table><tr><th>Username</th><th>Name</th><th>Email</th><th>Orders</th><th>Total spent</th></tr>' +
+    buyers.map(u => { const usr = users.find(x => x.user === u) || {}, mine = o.filter(x => x.user === u);
+      return `<tr><td>${u}</td><td>${usr.name || '-'}</td><td>${usr.email || '-'}</td><td>${mine.length}</td><td>Rs. ${mine.reduce((s, x) => s + x.total, 0)}</td></tr>`; }).join('') + '</table>'
+    : '<p>No customers have checked out yet.</p>';
+}
+
+nav(); show('home');
+</script>
+</body>
+</html>

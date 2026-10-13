@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 2 - Hotel Seabreeze Booking</title>
+<style>
+  body { font-family: "Trebuchet MS", sans-serif; margin: 0; background: #f2f6f9; color: #1d2b36; }
+  header { background: #0d4f6c; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 22px; }
+  button { background: #0d4f6c; color: #fff; border: 0; padding: 7px 12px; border-radius: 4px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #0d4f6c; }
+  .red { background: #b33; }
+  main { max-width: 960px; margin: 20px auto; padding: 0 15px; }
+  form { background: #fff; padding: 15px; border: 1px solid #c8d6df; max-width: 460px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #c8d6df; padding: 6px; text-align: left; font-size: 14px; }
+  th { background: #dceaf2; }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .room { background: #fff; border-left: 5px solid #0d4f6c; padding: 10px; }
+  .page { background: #fff; padding: 15px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header><h1>Hotel Seabreeze</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Our Rooms</h2>
+  <div class="rooms" id="roomCards"></div>
+  <h3>Check Availability</h3>
+  <form onsubmit="checkAvail(event)">
+    Arrival <input type="date" id="ca" required>
+    Departure <input type="date" id="cd" required>
+    <button>Check Availability</button>
+    <div id="availRes"></div>
+  </form>
+  <h3>Guest Reviews</h3>
+  <div id="reviewList"></div>
+</section>
+
+<section id="page" hidden><h2 id="pageTitle"></h2><div class="page" id="pageBody"></div></section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required>
+    <input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required>
+    <input id="rph" placeholder="Phone" required>
+    <input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<!-- USER -->
+<section id="book" hidden>
+  <h2>Book a Room</h2>
+  <form onsubmit="bookRoom(event)">
+    <input type="hidden" id="editId">
+    Room type <select id="bt"></select>
+    Arrival <input type="date" id="ba" required>
+    Departure <input type="date" id="bd" required>
+    Guests <input type="number" id="bg" min="1" max="4" value="1" required>
+    Payment method <select id="bpay"><option>Credit / Debit Card</option><option>UPI</option><option>Net Banking</option></select>
+    <p id="bTotal"></p>
+    <button>Pay and Book</button>
+  </form>
+</section>
+
+<section id="mybookings" hidden>
+  <h2>My Bookings</h2>
+  <p>You can change or cancel a booking up to 3 days before arrival.</p>
+  <div id="myList"></div>
+  <h3>Leave a Review</h3>
+  <form onsubmit="addReview(event)">
+    Rating <select id="rvr"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="rvt" placeholder="Your review" required></textarea>
+    <button>Post Review</button>
+  </form>
+</section>
+
+<section id="profile" hidden>
+  <h2>My Profile</h2>
+  <form onsubmit="saveProfile(event)">
+    <input id="pn" placeholder="Name" required>
+    <input id="pe" type="email" placeholder="Email" required>
+    <input id="pph" placeholder="Phone" required>
+    <input id="pp" type="password" placeholder="Password" required>
+    <button>Save Profile</button>
+  </form>
+</section>
+
+<!-- ADMIN -->
+<section id="adminRooms" hidden>
+  <h2>Room Quantity and Price</h2>
+  <div id="roomEdit"></div>
+  <button onclick="saveRooms()">Save Rooms</button>
+</section>
+
+<section id="adminBookings" hidden>
+  <h2>All Bookings</h2>
+  <div id="allList"></div>
+</section>
+
+<section id="adminPages" hidden>
+  <h2>Edit Information Pages</h2>
+  <form onsubmit="savePage(event)">
+    <select id="pgSel" onchange="loadPage()"></select>
+    <textarea id="pgText" rows="10"></textarea>
+    <button>Save Page</button>
+  </form>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const nights = (a, d) => Math.round((new Date(d) - new Date(a)) / 86400000);
+
+if (!db.get('ht_rooms')) db.set('ht_rooms', [
+  { type: 'Standard', qty: 10, price: 2000, info: 'Queen bed, AC, Wi-Fi' },
+  { type: 'Deluxe', qty: 6, price: 3500, info: 'King bed, sea view, minibar' },
+  { type: 'Family', qty: 4, price: 5000, info: 'Two beds, fits 4 guests' },
+  { type: 'Suite', qty: 2, price: 8000, info: 'Living room, balcony, bathtub' }
+]);
+if (!db.get('ht_pages')) db.set('ht_pages', {
+  'Room Information': 'All rooms include Wi-Fi, breakfast and daily housekeeping. Check-in 12 PM, check-out 11 AM.',
+  'About Us': 'Hotel Seabreeze is a 40-room beach hotel run by the same family since 1998.',
+  'Contact Us': 'Phone: +91 98765 43210\nEmail: stay@seabreeze.example\nAddress: Beach Road, Puducherry',
+  'Customer Service Q&A': 'Q: Can I cancel?\nA: Yes, free of charge up to 3 days before arrival.\n\nQ: Is parking free?\nA: Yes.',
+  'Local Travel and Shipping Guide': 'Airport: 30 km by taxi.\nRailway station: 3 km.\nCourier pickup available at reception.',
+  'Privacy Policy': 'We keep your details only to manage your booking. We never share them with third parties.'
+});
+let me = db.get('ht_session', null);
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Home']];
+  Object.keys(db.get('ht_pages')).forEach((p, i) => b.push([`openPage(${i})`, p]));
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['adminRooms', 'Rooms'], ['adminBookings', 'Bookings'], ['adminPages', 'Edit Pages']);
+  else b.push(['book', 'Book Room'], ['mybookings', 'My Bookings'], ['profile', 'Profile']);
+  $('nav').innerHTML = b.map(x => `<button onclick="${x[0].includes('(') ? x[0] : `show('${x[0]}')`}">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+function openPage(i) {
+  const pages = db.get('ht_pages'), key = Object.keys(pages)[i];
+  $('pageTitle').textContent = key; $('pageBody').textContent = pages[key]; show('page');
+}
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('ht_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, phone: $('rph').value, pass: $('rp').value });
+  db.set('ht_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('ht_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('ht_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'adminBookings' : 'book');
+}
+function logout() { me = null; localStorage.removeItem('ht_session'); nav(); show('home'); }
+
+// ---------- availability ----------
+function freeRooms(type, a, d, ignoreId) {
+  const room = db.get('ht_rooms').find(r => r.type === type);
+  const used = db.get('ht_bookings', []).filter(b => b.type === type && b.status === 'Booked' && b.id !== ignoreId &&
+    b.arrival < d && b.departure > a).length;   // overlapping dates
+  return room.qty - used;
+}
+function r_home() {
+  $('roomCards').innerHTML = db.get('ht_rooms').map(r =>
+    `<div class="room"><b>${r.type}</b><br>${r.info}<br>Rs. ${r.price} / night</div>`).join('');
+  const rv = db.get('ht_reviews', []);
+  $('reviewList').innerHTML = rv.length ? rv.map(x => `<p><b>${'★'.repeat(x.rating)}</b> ${x.text} <i>- ${x.user}</i></p>`).join('') : '<p>No reviews yet.</p>';
+}
+function checkAvail(e) {
+  e.preventDefault();
+  const a = $('ca').value, d = $('cd').value;
+  if (d <= a) return alert('Departure must be after arrival');
+  $('availRes').innerHTML = '<table><tr><th>Room</th><th>Free rooms</th></tr>' +
+    db.get('ht_rooms').map(r => `<tr><td>${r.type}</td><td>${freeRooms(r.type, a, d)}</td></tr>`).join('') + '</table>';
+}
+
+// ---------- booking ----------
+function r_book() {
+  $('bt').innerHTML = db.get('ht_rooms').map(r => `<option>${r.type}</option>`).join('');
+  ['bt', 'ba', 'bd'].forEach(id => $(id).onchange = showTotal);
+  showTotal();
+}
+function showTotal() {
+  const r = db.get('ht_rooms').find(x => x.type === $('bt').value);
+  const n = $('ba').value && $('bd').value ? nights($('ba').value, $('bd').value) : 0;
+  $('bTotal').textContent = n > 0 ? `${n} night(s) x Rs. ${r.price} = Rs. ${n * r.price}` : '';
+}
+function bookRoom(e) {
+  e.preventDefault();
+  const type = $('bt').value, a = $('ba').value, d = $('bd').value, editId = +$('editId').value || null;
+  if (a < today()) return alert('Arrival date cannot be in the past');
+  if (d <= a) return alert('Departure must be after arrival');
+  if (freeRooms(type, a, d, editId) < 1) return alert('No ' + type + ' room free for these dates');
+  const price = db.get('ht_rooms').find(r => r.type === type).price;
+  const list = db.get('ht_bookings', []);
+  const data = { type, arrival: a, departure: d, guests: +$('bg').value, amount: nights(a, d) * price, pay: $('bpay').value };
+  if (editId) Object.assign(list.find(b => b.id === editId), data);
+  else list.push({ id: Date.now(), user: me.user, status: 'Booked', ...data });
+  db.set('ht_bookings', list);
+  alert((editId ? 'Booking changed' : 'Payment successful, room booked') + '. A confirmation email has been sent.');
+  e.target.reset(); $('editId').value = ''; show(me.role === 'admin' ? 'adminBookings' : 'mybookings');
+}
+const canChange = b => b.status === 'Booked' && nights(today(), b.arrival) >= 3;
+function bookingTable(list, admin) {
+  if (!list.length) return '<p>No bookings yet.</p>';
+  return `<table><tr><th>ID</th>${admin ? '<th>Guest</th>' : ''}<th>Room</th><th>Arrival</th><th>Departure</th><th>Guests</th><th>Amount</th><th>Status</th><th>Action</th></tr>` +
+    list.map(b => `<tr><td>${b.id}</td>${admin ? `<td>${b.user}</td>` : ''}<td>${b.type}</td><td>${b.arrival}</td><td>${b.departure}</td>
+    <td>${b.guests}</td><td>Rs. ${b.amount}</td><td>${b.status}</td><td>` +
+    ((admin && b.status === 'Booked') || canChange(b) ? `<button onclick="editBooking(${b.id})">Change</button><button class="red" onclick="cancelBooking(${b.id})">Cancel</button>` : '-') +
+    '</td></tr>').join('') + '</table>';
+}
+function r_mybookings() { $('myList').innerHTML = bookingTable(db.get('ht_bookings', []).filter(b => b.user === me.user)); }
+function r_adminBookings() { $('allList').innerHTML = bookingTable(db.get('ht_bookings', []), true); }
+function editBooking(id) {
+  const b = db.get('ht_bookings', []).find(x => x.id === id);
+  show('book');
+  $('editId').value = id; $('bt').value = b.type; $('ba').value = b.arrival; $('bd').value = b.departure; $('bg').value = b.guests; showTotal();
+}
+function cancelBooking(id) {
+  if (!confirm('Cancel this booking?')) return;
+  const list = db.get('ht_bookings', []);
+  list.find(b => b.id === id).status = 'Cancelled';
+  db.set('ht_bookings', list); alert('Booking cancelled. Refund will be processed.');
+  me.role === 'admin' ? r_adminBookings() : r_mybookings();
+}
+function addReview(e) {
+  e.preventDefault();
+  const rv = db.get('ht_reviews', []);
+  rv.push({ user: me.user, rating: +$('rvr').value, text: $('rvt').value });
+  db.set('ht_reviews', rv); e.target.reset(); alert('Thank you for your review');
+}
+
+// ---------- profile ----------
+function r_profile() {
+  const u = db.get('ht_users', []).find(x => x.user === me.user);
+  $('pn').value = u.name; $('pe').value = u.email; $('pph').value = u.phone; $('pp').value = u.pass;
+}
+function saveProfile(e) {
+  e.preventDefault();
+  const users = db.get('ht_users', []);
+  Object.assign(users.find(x => x.user === me.user), { name: $('pn').value, email: $('pe').value, phone: $('pph').value, pass: $('pp').value });
+  db.set('ht_users', users); alert('Profile saved');
+}
+
+// ---------- admin ----------
+function r_adminRooms() {
+  $('roomEdit').innerHTML = '<table><tr><th>Room type</th><th>Quantity</th><th>Price per night</th></tr>' +
+    db.get('ht_rooms').map((r, i) => `<tr><td>${r.type}</td><td><input type="number" id="q${i}" value="${r.qty}"></td>
+    <td><input type="number" id="p${i}" value="${r.price}"></td></tr>`).join('') + '</table>';
+}
+function saveRooms() {
+  const rooms = db.get('ht_rooms');
+  rooms.forEach((r, i) => { r.qty = +$('q' + i).value; r.price = +$('p' + i).value; });
+  db.set('ht_rooms', rooms); alert('Rooms updated');
+}
+function r_adminPages() {
+  $('pgSel').innerHTML = Object.keys(db.get('ht_pages')).map(k => `<option>${k}</option>`).join('');
+  loadPage();
+}
+function loadPage() { $('pgText').value = db.get('ht_pages')[$('pgSel').value]; }
+function savePage(e) {
+  e.preventDefault();
+  const pages = db.get('ht_pages');
+  pages[$('pgSel').value] = $('pgText').value;
+  db.set('ht_pages', pages); alert('Page saved');
+}
+
+nav(); show('home');
+</script>
+</body>
+</html>

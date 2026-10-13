@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 1 - City Library</title>
+<style>
+  body { font-family: Georgia, serif; margin: 0; background: #f4f7f4; color: #222; }
+  header { background: #1f4d3a; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 22px; }
+  button { background: #1f4d3a; color: #fff; border: 0; padding: 7px 12px; border-radius: 4px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #1f4d3a; }
+  .red { background: #a33; }
+  main { max-width: 960px; margin: 20px auto; padding: 0 15px; }
+  form { background: #fff; padding: 15px; border: 1px solid #ccc; max-width: 440px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 14px; }
+  th { background: #dfeae2; }
+  .row { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<header><h1>City Library</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Welcome</h2>
+  <p>Search the catalogue, borrow books and download study material for your year and semester.</p>
+  <input id="q0" placeholder="Search by title, author or category" oninput="homeSearch()">
+  <div id="homeRes"></div>
+</section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <select id="lrole"><option value="user">Student</option><option value="admin">Librarian (Admin)</option></select>
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Student Registration</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required>
+    <input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required>
+    <input id="rd" placeholder="Department" required>
+    <input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<!-- ADMIN -->
+<section id="books" hidden>
+  <h2>Add / Update Book</h2>
+  <form onsubmit="saveBook(event)">
+    <input type="hidden" id="bid">
+    <input id="bt" placeholder="Title" required>
+    <input id="ba" placeholder="Author" required>
+    <input id="bc" placeholder="Category" required>
+    <input id="bq" type="number" min="1" placeholder="Number of copies" required>
+    <button>Save Book</button>
+  </form>
+  <div id="bookList"></div>
+</section>
+
+<section id="issue" hidden>
+  <h2>Issue Book to Student</h2>
+  <form onsubmit="issueBook(event)">
+    <select id="iu"></select>
+    <select id="ib"></select>
+    <button>Issue Book</button>
+  </form>
+  <h3>Issued Books, Returns and Fines (Rs. 2 per late day)</h3>
+  <div id="issueList"></div>
+</section>
+
+<section id="materials" hidden>
+  <h2>Add / Update Material</h2>
+  <form onsubmit="saveMat(event)">
+    <input type="hidden" id="mid">
+    <input id="mt" placeholder="Material title" required>
+    <div class="row">
+      <select id="my"><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select>
+      <select id="ms"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+    </div>
+    <textarea id="mc" rows="4" placeholder="Notes content" required></textarea>
+    <button>Save Material</button>
+  </form>
+  <div id="matList"></div>
+</section>
+
+<section id="messages" hidden><h2>Contact Messages</h2><div id="msgList"></div></section>
+
+<!-- USER -->
+<section id="search" hidden>
+  <h2>Search Books</h2>
+  <input id="q" placeholder="Title, author or category" oninput="r_search()">
+  <div id="searchRes"></div>
+</section>
+
+<section id="history" hidden>
+  <h2>My Borrow History</h2>
+  <div id="histList"></div>
+  <h3 id="fineTotal"></h3>
+</section>
+
+<section id="mat" hidden>
+  <h2>Study Material</h2>
+  <div class="row">
+    <select id="fy" onchange="r_mat()"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+    <select id="fs" onchange="r_mat()"><option value="">All semesters</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+  </div>
+  <div id="userMat"></div>
+</section>
+
+<section id="profile" hidden>
+  <h2>My Profile</h2>
+  <form onsubmit="saveProfile(event)">
+    Username: <b id="pu"></b>
+    <input id="pn" placeholder="Name" required>
+    <input id="pe" type="email" placeholder="Email" required>
+    <input id="pd" placeholder="Department" required>
+    <input id="pp" type="password" placeholder="Password" required>
+    <button>Save Profile</button>
+  </form>
+</section>
+
+<section id="contact" hidden>
+  <h2>Contact the Library</h2>
+  <form onsubmit="sendMsg(event)">
+    <input id="cn" placeholder="Your name" required>
+    <input id="ce" type="email" placeholder="Email" required>
+    <textarea id="cm" rows="4" placeholder="Message" required></textarea>
+    <button>Send Message</button>
+  </form>
+</section>
+</main>
+
+<script>
+// ---------- storage helpers ----------
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const FINE = 2, LOAN_DAYS = 14;
+
+// ---------- sample data ----------
+if (!db.get('lib_books')) db.set('lib_books', [
+  { id: 1, title: 'Let Us C', author: 'Yashavant Kanetkar', cat: 'Programming', copies: 3 },
+  { id: 2, title: 'Database System Concepts', author: 'Silberschatz', cat: 'Database', copies: 2 },
+  { id: 3, title: 'Computer Networks', author: 'Tanenbaum', cat: 'Networking', copies: 2 }
+]);
+if (!db.get('lib_mat')) db.set('lib_mat', [
+  { id: 1, title: 'DBMS Unit 1 Notes', year: '2', sem: '3', content: 'ER model, relational model, keys.' }
+]);
+let me = db.get('lib_session', null);
+
+// ---------- navigation ----------
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Home']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['books', 'Books'], ['issue', 'Issue / Return'], ['materials', 'Materials'], ['messages', 'Messages']);
+  else b.push(['search', 'Search'], ['history', 'My Borrows'], ['mat', 'Material'], ['profile', 'Profile']);
+  b.push(['contact', 'Contact']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout (${me.user})</button>` : '');
+}
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('lib_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, dept: $('rd').value, pass: $('rp').value });
+  db.set('lib_users', users);
+  alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if ($('lrole').value === 'admin') {
+    if (u !== 'admin' || p !== 'admin123') return alert('Wrong admin login');
+    me = { user: 'admin', role: 'admin' };
+  } else {
+    const found = db.get('lib_users', []).find(x => x.user === u && x.pass === p);
+    if (!found) return alert('Wrong username or password');
+    me = { user: u, role: 'user' };
+  }
+  db.set('lib_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'books' : 'search');
+}
+function logout() { me = null; localStorage.removeItem('lib_session'); nav(); show('home'); }
+
+// ---------- books ----------
+const issuedCount = id => db.get('lib_issues', []).filter(i => i.bookId === id && !i.ret).length;
+function bookTable(list, admin) {
+  if (!list.length) return '<p>No books found.</p>';
+  return `<table><tr><th>Title</th><th>Author</th><th>Category</th><th>Available</th>${admin ? '<th>Action</th>' : ''}</tr>` +
+    list.map(b => `<tr><td>${b.title}</td><td>${b.author}</td><td>${b.cat}</td><td>${b.copies - issuedCount(b.id)} / ${b.copies}</td>
+    ${admin ? `<td><button onclick="editBook(${b.id})">Edit</button><button class="red" onclick="delBook(${b.id})">Delete</button></td>` : ''}</tr>`).join('') + '</table>';
+}
+function findBooks(q) {
+  q = q.toLowerCase();
+  return db.get('lib_books', []).filter(b => (b.title + b.author + b.cat).toLowerCase().includes(q));
+}
+function homeSearch() { $('homeRes').innerHTML = $('q0').value ? bookTable(findBooks($('q0').value)) : ''; }
+function r_search() { $('searchRes').innerHTML = bookTable(findBooks($('q').value)); }
+function r_books() { $('bookList').innerHTML = bookTable(db.get('lib_books', []), true); }
+function saveBook(e) {
+  e.preventDefault();
+  const books = db.get('lib_books', []);
+  const data = { title: $('bt').value, author: $('ba').value, cat: $('bc').value, copies: +$('bq').value };
+  if ($('bid').value) Object.assign(books.find(b => b.id == $('bid').value), data);
+  else books.push({ id: Date.now(), ...data });
+  db.set('lib_books', books); e.target.reset(); $('bid').value = ''; r_books();
+}
+function editBook(id) {
+  const b = db.get('lib_books', []).find(x => x.id === id);
+  $('bid').value = b.id; $('bt').value = b.title; $('ba').value = b.author; $('bc').value = b.cat; $('bq').value = b.copies;
+}
+function delBook(id) {
+  if (!confirm('Delete this book?')) return;
+  db.set('lib_books', db.get('lib_books', []).filter(b => b.id !== id)); r_books();
+}
+
+// ---------- issue / return / fine ----------
+function fineOf(i) {
+  const end = i.ret || today();
+  const late = Math.floor((new Date(end) - new Date(i.due)) / 86400000);
+  return late > 0 ? late * FINE : 0;
+}
+function r_issue() {
+  $('iu').innerHTML = db.get('lib_users', []).map(u => `<option>${u.user}</option>`).join('') || '<option value="">No students registered</option>';
+  $('ib').innerHTML = db.get('lib_books', []).filter(b => b.copies - issuedCount(b.id) > 0)
+    .map(b => `<option value="${b.id}">${b.title}</option>`).join('');
+  const books = db.get('lib_books', []);
+  const list = db.get('lib_issues', []);
+  $('issueList').innerHTML = `<table><tr><th>Student</th><th>Book</th><th>Issued</th><th>Due</th><th>Status</th><th>Fine</th><th>Action</th></tr>` +
+    list.map(i => `<tr><td>${i.user}</td><td>${(books.find(b => b.id === i.bookId) || {}).title || 'Deleted'}</td>
+    <td>${i.date}</td><td>${i.due}</td><td>${i.ret ? 'Returned ' + i.ret : 'Issued'}</td>
+    <td>Rs. ${fineOf(i)} ${fineOf(i) ? (i.paid ? '(paid)' : '(due)') : ''}</td>
+    <td>${!i.ret ? `<button onclick="returnBook(${i.id})">Mark Returned</button>` : ''}
+        ${fineOf(i) && !i.paid ? `<button onclick="payFine(${i.id})">Fine Paid</button>` : ''}</td></tr>`).join('') + '</table>';
+}
+function issueBook(e) {
+  e.preventDefault();
+  if (!$('iu').value || !$('ib').value) return alert('Select a student and an available book');
+  const list = db.get('lib_issues', []);
+  list.push({ id: Date.now(), user: $('iu').value, bookId: +$('ib').value, date: today(), due: addDays(today(), LOAN_DAYS), ret: null, paid: false });
+  db.set('lib_issues', list); alert('Book issued. Due in ' + LOAN_DAYS + ' days.'); r_issue();
+}
+function updateIssue(id, change) {
+  const list = db.get('lib_issues', []);
+  Object.assign(list.find(i => i.id === id), change);
+  db.set('lib_issues', list); r_issue();
+}
+const returnBook = id => updateIssue(id, { ret: today() });
+const payFine = id => updateIssue(id, { paid: true });
+
+function r_history() {
+  const books = db.get('lib_books', []);
+  const mine = db.get('lib_issues', []).filter(i => i.user === me.user);
+  $('histList').innerHTML = mine.length ? `<table><tr><th>Book</th><th>Issue Date</th><th>Expiry (Due) Date</th><th>Status</th><th>Fine</th></tr>` +
+    mine.map(i => `<tr><td>${(books.find(b => b.id === i.bookId) || {}).title || 'Deleted'}</td><td>${i.date}</td><td>${i.due}</td>
+    <td>${i.ret ? 'Returned' : 'With you'}</td><td>Rs. ${fineOf(i)} ${i.paid ? '(paid)' : ''}</td></tr>`).join('') + '</table>' : '<p>You have not borrowed any books yet.</p>';
+  const due = mine.filter(i => !i.paid).reduce((s, i) => s + fineOf(i), 0);
+  $('fineTotal').textContent = 'Total fine to pay: Rs. ' + due;
+}
+
+// ---------- materials ----------
+function matTable(list, admin) {
+  if (!list.length) return '<p>No material found.</p>';
+  return `<table><tr><th>Title</th><th>Year</th><th>Semester</th><th>Action</th></tr>` +
+    list.map(m => `<tr><td>${m.title}</td><td>${m.year}</td><td>${m.sem}</td><td>` +
+    (admin ? `<button onclick="editMat(${m.id})">Edit</button><button class="red" onclick="delMat(${m.id})">Delete</button>`
+           : `<button onclick="download(${m.id})">Download</button>`) + '</td></tr>').join('') + '</table>';
+}
+function r_materials() { $('matList').innerHTML = matTable(db.get('lib_mat', []), true); }
+function saveMat(e) {
+  e.preventDefault();
+  const mats = db.get('lib_mat', []);
+  const data = { title: $('mt').value, year: $('my').value, sem: $('ms').value, content: $('mc').value };
+  if ($('mid').value) Object.assign(mats.find(m => m.id == $('mid').value), data);
+  else mats.push({ id: Date.now(), ...data });
+  db.set('lib_mat', mats); e.target.reset(); $('mid').value = ''; r_materials();
+}
+function editMat(id) {
+  const m = db.get('lib_mat', []).find(x => x.id === id);
+  $('mid').value = m.id; $('mt').value = m.title; $('my').value = m.year; $('ms').value = m.sem; $('mc').value = m.content;
+}
+function delMat(id) { db.set('lib_mat', db.get('lib_mat', []).filter(m => m.id !== id)); r_materials(); }
+function r_mat() {
+  const y = $('fy').value, s = $('fs').value;
+  $('userMat').innerHTML = matTable(db.get('lib_mat', []).filter(m => (!y || m.year === y) && (!s || m.sem === s)));
+}
+function download(id) {
+  const m = db.get('lib_mat', []).find(x => x.id === id);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([m.title + '\n\n' + m.content], { type: 'text/plain' }));
+  a.download = m.title + '.txt'; a.click();
+}
+
+// ---------- profile & contact ----------
+function r_profile() {
+  const u = db.get('lib_users', []).find(x => x.user === me.user);
+  $('pu').textContent = u.user; $('pn').value = u.name; $('pe').value = u.email; $('pd').value = u.dept; $('pp').value = u.pass;
+}
+function saveProfile(e) {
+  e.preventDefault();
+  const users = db.get('lib_users', []);
+  Object.assign(users.find(x => x.user === me.user), { name: $('pn').value, email: $('pe').value, dept: $('pd').value, pass: $('pp').value });
+  db.set('lib_users', users); alert('Profile saved');
+}
+function sendMsg(e) {
+  e.preventDefault();
+  const m = db.get('lib_msgs', []);
+  m.push({ name: $('cn').value, email: $('ce').value, msg: $('cm').value, date: today() });
+  db.set('lib_msgs', m); e.target.reset(); alert('Message sent to the library');
+}
+function r_messages() {
+  const m = db.get('lib_msgs', []);
+  $('msgList').innerHTML = m.length ? '<table><tr><th>Date</th><th>Name</th><th>Email</th><th>Message</th></tr>' +
+    m.map(x => `<tr><td>${x.date}</td><td>${x.name}</td><td>${x.email}</td><td>${x.msg}</td></tr>`).join('') + '</table>' : '<p>No messages.</p>';
+}
+
+nav(); show('home');
+</script>
+</body>
+</html>

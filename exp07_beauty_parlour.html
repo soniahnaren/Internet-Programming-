@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 7 - Glow Studio Salon</title>
+<style>
+  body { font-family: "Palatino Linotype", Palatino, serif; margin: 0; background: #f8f4fa; color: #2e2433; font-size: 15px; }
+  header { background: #5b3a6e; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 22px; font-style: italic; }
+  button { background: #5b3a6e; color: #fff; border: 0; padding: 7px 12px; border-radius: 4px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #5b3a6e; }
+  .red { background: #9b2c2c; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #ddd0e4; max-width: 480px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; font-family: inherit; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #ddd0e4; padding: 6px; text-align: left; font-size: 14px; }
+  th { background: #ece1f2; }
+  .cal td { text-align: center; }
+  .free { background: #e6f5e6; } .booked { background: #f6d6d6; } .locked { background: #ccc; }
+  .reminder { background: #fff2c6; padding: 10px; margin-bottom: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .card { background: #fff; border-top: 4px solid #5b3a6e; padding: 10px; }
+</style>
+</head>
+<body>
+<header><h1>Glow Studio</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Services</h2>
+  <div class="grid" id="svcCards"></div>
+  <h2>Our Stylists</h2>
+  <div class="grid" id="styCards"></div>
+  <h2>Availability Calendar</h2>
+  <input type="date" id="calDate" onchange="drawCal('calBox', this.value)" style="max-width:200px">
+  <div id="calBox"></div>
+  <h2>What customers say</h2>
+  <div id="fbList"></div>
+</section>
+
+<section id="book" hidden>
+  <h2>Book an Appointment</h2>
+  <form onsubmit="makeReservation(event)">
+    <input type="hidden" id="resId">
+    Service <select id="bsvc"></select>
+    Stylist <select id="bsty" onchange="fillSlots()"></select>
+    Date <input type="date" id="bdate" onchange="fillSlots()" required>
+    Time <select id="bslot" required></select>
+    <div id="custFields" hidden>
+      <input id="wname" placeholder="Customer name">
+      <input id="wphone" placeholder="Customer phone">
+    </div>
+    <button id="bookBtn">Continue</button>
+  </form>
+</section>
+
+<section id="payment" hidden>
+  <h2>Payment</h2>
+  <form onsubmit="pay(event)">
+    <p id="payInfo"></p>
+    Pay <select id="ptype" onchange="payAmt()"><option value="full">Full amount</option><option value="deposit">30% deposit now, rest at salon</option></select>
+    Method <select id="pmethod"><option>Stripe (Card)</option><option>PayPal</option><option>UPI</option></select>
+    <p id="payNow"></p>
+    <p><small>Unpaid reservations are cancelled automatically after 15 minutes.</small></p>
+    <button>Pay Now</button>
+    <button type="button" class="red" onclick="show('account')">Pay Later</button>
+  </form>
+</section>
+
+<section id="account" hidden>
+  <div id="reminders"></div>
+  <h2>Upcoming Reservations</h2><div id="upList"></div>
+  <h2>Reservation History</h2><div id="histList"></div>
+  <h2>Personal Data</h2>
+  <form onsubmit="saveProfile(event)">
+    <input id="pn" placeholder="Name" required>
+    <input id="pph" placeholder="Phone" required>
+    <input id="pe" type="email" placeholder="Email" required>
+    <button>Save Details</button>
+  </form>
+  <h2>Leave Feedback</h2>
+  <form onsubmit="addFeedback(event)">
+    <select id="fr"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="ft" placeholder="How was your visit? Any suggestions?" required></textarea>
+    <button>Send Feedback</button>
+  </form>
+</section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Salon manager login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required>
+    <input id="ru" placeholder="Username" required>
+    <input id="rph" placeholder="Phone" required>
+    <input id="re" type="email" placeholder="Email" required>
+    <input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<!-- MANAGER / STAFF -->
+<section id="staff" hidden>
+  <h2>Reservations Calendar</h2>
+  <input type="date" id="staffDate" onchange="drawCal('staffCal', this.value)" style="max-width:200px">
+  <div id="staffCal"></div>
+  <button onclick="startAdd()">+ Add Reservation</button>
+  <h2>Upcoming Reservations</h2><div id="staffList"></div>
+  <h2>Lock Out Unavailable Hours</h2>
+  <form onsubmit="addLock(event)">
+    <input type="date" id="ldate" required>
+    <select id="lhour"></select>
+    <select id="lsty"></select>
+    <input id="lreason" placeholder="Reason (e.g. staff leave)">
+    <button>Lock Hour</button>
+  </form>
+  <div id="lockList"></div>
+</section>
+
+<section id="manage" hidden>
+  <h2>Services</h2>
+  <form onsubmit="addService(event)"><input id="sn" placeholder="Service name" required><input type="number" id="sp" placeholder="Price" required><button>Add Service</button></form>
+  <div id="svcList"></div>
+  <h2>Stylists</h2>
+  <form onsubmit="addStylist(event)"><input id="tn" placeholder="Stylist name" required><input id="ts" placeholder="Speciality" required><button>Add Stylist</button></form>
+  <div id="styList"></div>
+  <h2>Customer Feedback</h2><div id="fbAdmin"></div>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const HOURS = [10, 11, 12, 13, 14, 15, 16, 17, 18];
+const hourText = h => (h > 12 ? h - 12 : h) + (h >= 12 ? ' PM' : ' AM');
+
+if (!db.get('bp_services')) db.set('bp_services', [
+  { id: 1, name: 'Haircut and styling', price: 400 }, { id: 2, name: 'Facial', price: 900 },
+  { id: 3, name: 'Bridal makeup', price: 6000 }, { id: 4, name: 'Manicure', price: 350 }
+]);
+if (!db.get('bp_stylists')) db.set('bp_stylists', [
+  { id: 1, name: 'Priya', skill: 'Hair and colour' }, { id: 2, name: 'Meena', skill: 'Skin care and makeup' }
+]);
+let me = db.get('bp_session', null), pendingId = null;
+
+// automatic cancellation of unpaid reservations (older than 15 minutes)
+(function autoCancel() {
+  const list = db.get('bp_res', []);
+  list.forEach(r => { if (r.status === 'Pending payment' && Date.now() - r.created > 15 * 60000) r.status = 'Cancelled (unpaid)'; });
+  db.set('bp_res', list);
+})();
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Home']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['staff', 'Reservations'], ['manage', 'Services & Staff']);
+  else b.push(['book', 'Book Appointment'], ['account', 'My Account']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+const svc = id => db.get('bp_services').find(s => s.id === id) || { name: '(removed)', price: 0 };
+const sty = id => db.get('bp_stylists').find(s => s.id === id) || { name: '(removed)' };
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('bp_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, phone: $('rph').value, email: $('re').value, pass: $('rp').value });
+  db.set('bp_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('bp_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('bp_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'staff' : 'account');
+}
+function logout() { me = null; localStorage.removeItem('bp_session'); nav(); show('home'); }
+
+// ---------- calendar ----------
+const active = r => r.status === 'Confirmed' || r.status === 'Pending payment';
+function slotState(date, hour, styId, ignoreId) {
+  if (db.get('bp_locks', []).find(l => l.date === date && l.hour === hour && (l.sty === 0 || l.sty === styId))) return 'locked';
+  if (db.get('bp_res', []).find(r => active(r) && r.id !== ignoreId && r.date === date && r.hour === hour && r.sty === styId)) return 'booked';
+  return 'free';
+}
+function drawCal(box, date) {
+  if (!date) return;
+  const sts = db.get('bp_stylists');
+  const res = db.get('bp_res', []);
+  $(box).innerHTML = '<table class="cal"><tr><th>Time</th>' + sts.map(s => `<th>${s.name}</th>`).join('') + '</tr>' +
+    HOURS.map(h => `<tr><th>${hourText(h)}</th>` + sts.map(s => {
+      const st = slotState(date, h, s.id);
+      const r = res.find(x => active(x) && x.date === date && x.hour === h && x.sty === s.id);
+      const label = st === 'free' ? 'Free' : st === 'locked' ? 'Unavailable' : (me && me.role === 'admin' && r ? `${r.cname}<br>${svc(r.svc).name}` : 'Booked');
+      return `<td class="${st}">${label}</td>`;
+    }).join('') + '</tr>').join('') + '</table>';
+}
+
+// ---------- home ----------
+function r_home() {
+  $('svcCards').innerHTML = db.get('bp_services').map(s => `<div class="card"><b>${s.name}</b><br>Rs. ${s.price}</div>`).join('');
+  $('styCards').innerHTML = db.get('bp_stylists').map(s => `<div class="card"><b>${s.name}</b><br>${s.skill}</div>`).join('');
+  if (!$('calDate').value) $('calDate').value = today();
+  drawCal('calBox', $('calDate').value);
+  $('fbList').innerHTML = db.get('bp_feedback', []).slice(-5).map(f => `<p>${'★'.repeat(f.rating)} ${f.text} <i>- ${f.user}</i></p>`).join('') || '<p>No feedback yet.</p>';
+}
+
+// ---------- booking ----------
+function r_book() {
+  $('bsvc').innerHTML = db.get('bp_services').map(s => `<option value="${s.id}">${s.name} - Rs. ${s.price}</option>`).join('');
+  $('bsty').innerHTML = db.get('bp_stylists').map(s => `<option value="${s.id}">${s.name} (${s.skill})</option>`).join('');
+  $('custFields').hidden = me.role !== 'admin';
+  if (!$('resId').value) { $('bdate').value = today(); $('bookBtn').textContent = me.role === 'admin' ? 'Save Reservation' : 'Continue to Payment'; }
+  fillSlots();
+}
+function fillSlots() {
+  const d = $('bdate').value, s = +$('bsty').value, ignore = +$('resId').value || null;
+  const nowHour = new Date().getHours();
+  const free = HOURS.filter(h => slotState(d, h, s, ignore) === 'free' && !(d === today() && h <= nowHour));
+  $('bslot').innerHTML = free.length ? free.map(h => `<option value="${h}">${hourText(h)}</option>`).join('') : '<option value="">No free slots</option>';
+}
+function makeReservation(e) {
+  e.preventDefault();
+  if (!$('bslot').value) return alert('No free slot for this stylist on this date');
+  if ($('bdate').value < today()) return alert('Pick today or a later date');
+  const list = db.get('bp_res', []);
+  const data = { svc: +$('bsvc').value, sty: +$('bsty').value, date: $('bdate').value, hour: +$('bslot').value };
+  const editId = +$('resId').value;
+  if (editId) {
+    Object.assign(list.find(r => r.id === editId), data);
+    db.set('bp_res', list); alert('Reservation updated. Confirmation sent.');
+  } else if (me.role === 'admin') {
+    list.push({ id: Date.now(), user: null, cname: $('wname').value || 'Walk-in', phone: $('wphone').value, ...data, status: 'Confirmed', paid: 0, created: Date.now() });
+    db.set('bp_res', list); alert('Reservation added');
+  } else {
+    const u = db.get('bp_users', []).find(x => x.user === me.user);
+    pendingId = Date.now();
+    list.push({ id: pendingId, user: me.user, cname: u.name, phone: u.phone, ...data, status: 'Pending payment', paid: 0, created: Date.now() });
+    db.set('bp_res', list);
+    $('resId').value = ''; return show('payment');
+  }
+  $('resId').value = ''; show(me.role === 'admin' ? 'staff' : 'account');
+}
+function r_payment() {
+  const r = db.get('bp_res', []).find(x => x.id === pendingId);
+  $('payInfo').textContent = `${svc(r.svc).name} with ${sty(r.sty).name} on ${r.date} at ${hourText(r.hour)}`;
+  payAmt();
+}
+function payAmt() {
+  const r = db.get('bp_res', []).find(x => x.id === pendingId), price = svc(r.svc).price;
+  $('payNow').textContent = 'Pay now: Rs. ' + ($('ptype').value === 'full' ? price : Math.round(price * 0.3)) + ' of Rs. ' + price;
+}
+function pay(e) {
+  e.preventDefault();
+  const list = db.get('bp_res', []);
+  const r = list.find(x => x.id === pendingId), price = svc(r.svc).price;
+  if (r.status !== 'Pending payment') return alert('This reservation is no longer pending');
+  r.paid = $('ptype').value === 'full' ? price : Math.round(price * 0.3);
+  r.method = $('pmethod').value; r.status = 'Confirmed';
+  db.set('bp_res', list); alert('Payment received via ' + r.method + '. Confirmation email sent.'); show('account');
+}
+function payPending(id) { pendingId = id; show('payment'); }
+function editRes(id) {
+  const r = db.get('bp_res', []).find(x => x.id === id);
+  show('book');
+  $('resId').value = id; $('bsvc').value = r.svc; $('bsty').value = r.sty; $('bdate').value = r.date; $('bookBtn').textContent = 'Save Changes';
+  $('wname').value = r.cname; $('wphone').value = r.phone || '';
+  fillSlots();
+  $('bslot').value = r.hour;
+}
+function cancelRes(id) {
+  if (!confirm('Cancel this reservation?')) return;
+  const list = db.get('bp_res', []);
+  list.find(r => r.id === id).status = 'Cancelled';
+  db.set('bp_res', list); show(me.role === 'admin' ? 'staff' : 'account');
+}
+
+// ---------- customer account ----------
+function resTable(list, admin) {
+  if (!list.length) return '<p>Nothing here yet.</p>';
+  return '<table><tr>' + (admin ? '<th>Customer</th>' : '') + '<th>Date</th><th>Time</th><th>Service</th><th>Stylist</th><th>Paid</th><th>Status</th><th></th></tr>' +
+    list.map(r => `<tr>${admin ? `<td>${r.cname}<br><a href="tel:${r.phone}">Call</a> | <a href="sms:${r.phone}?body=Reminder: your Glow Studio appointment on ${r.date}">SMS</a></td>` : ''}
+    <td>${r.date}</td><td>${hourText(r.hour)}</td><td>${svc(r.svc).name}</td><td>${sty(r.sty).name}</td><td>Rs. ${r.paid} / ${svc(r.svc).price}</td><td>${r.status}</td><td>` +
+    (active(r) && r.date >= today() ? (r.status === 'Pending payment' && !admin ? `<button onclick="payPending(${r.id})">Pay</button>` : '') +
+      `<button onclick="editRes(${r.id})">Reschedule</button><button class="red" onclick="cancelRes(${r.id})">Cancel</button>` : '') + '</td></tr>').join('') + '</table>';
+}
+function r_account() {
+  const mine = db.get('bp_res', []).filter(r => r.user === me.user).sort((a, b) => (a.date + a.hour).localeCompare(b.date + b.hour));
+  const up = mine.filter(r => active(r) && r.date >= today());
+  $('upList').innerHTML = resTable(up);
+  $('histList').innerHTML = resTable(mine.filter(r => !up.includes(r)));
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  $('reminders').innerHTML = up.filter(r => r.date === today() || r.date === tomorrow)
+    .map(r => `<div class="reminder">Reminder: ${svc(r.svc).name} on ${r.date} at ${hourText(r.hour)} with ${sty(r.sty).name}</div>`).join('');
+  const u = db.get('bp_users', []).find(x => x.user === me.user);
+  $('pn').value = u.name; $('pph').value = u.phone; $('pe').value = u.email;
+}
+function saveProfile(e) {
+  e.preventDefault();
+  const users = db.get('bp_users', []);
+  Object.assign(users.find(x => x.user === me.user), { name: $('pn').value, phone: $('pph').value, email: $('pe').value });
+  db.set('bp_users', users); alert('Details saved');
+}
+function addFeedback(e) {
+  e.preventDefault();
+  const f = db.get('bp_feedback', []);
+  f.push({ user: me.user, rating: +$('fr').value, text: $('ft').value, date: today() });
+  db.set('bp_feedback', f); e.target.reset(); alert('Thank you for your feedback');
+}
+
+// ---------- staff / manager ----------
+function r_staff() {
+  if (!$('staffDate').value) $('staffDate').value = today();
+  drawCal('staffCal', $('staffDate').value);
+  $('staffList').innerHTML = resTable(db.get('bp_res', []).filter(r => active(r) && r.date >= today())
+    .sort((a, b) => (a.date + a.hour).localeCompare(b.date + b.hour)), true);
+  $('lhour').innerHTML = HOURS.map(h => `<option value="${h}">${hourText(h)}</option>`).join('');
+  $('lsty').innerHTML = '<option value="0">All stylists</option>' + db.get('bp_stylists').map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  $('lockList').innerHTML = db.get('bp_locks', []).map((l, i) => `<p>${l.date} ${hourText(l.hour)} - ${l.sty ? sty(l.sty).name : 'All'} ${l.reason ? '(' + l.reason + ')' : ''}
+    <button class="red" onclick="delLock(${i})">Unlock</button></p>`).join('');
+}
+function startAdd() { $('resId').value = ''; show('book'); }
+function addLock(e) {
+  e.preventDefault();
+  const l = db.get('bp_locks', []);
+  l.push({ date: $('ldate').value, hour: +$('lhour').value, sty: +$('lsty').value, reason: $('lreason').value });
+  db.set('bp_locks', l); e.target.reset(); r_staff();
+}
+function delLock(i) { const l = db.get('bp_locks', []); l.splice(i, 1); db.set('bp_locks', l); r_staff(); }
+function r_manage() {
+  $('svcList').innerHTML = db.get('bp_services').map(s => `<p>${s.name} - Rs. ${s.price} <button class="red" onclick="delItem('bp_services',${s.id})">Remove</button></p>`).join('');
+  $('styList').innerHTML = db.get('bp_stylists').map(s => `<p>${s.name} (${s.skill}) <button class="red" onclick="delItem('bp_stylists',${s.id})">Remove</button></p>`).join('');
+  $('fbAdmin').innerHTML = db.get('bp_feedback', []).map(f => `<p>${f.date} ${'★'.repeat(f.rating)} ${f.text} <i>- ${f.user}</i></p>`).join('') || '<p>No feedback yet.</p>';
+}
+function addService(e) { e.preventDefault(); const s = db.get('bp_services'); s.push({ id: Date.now(), name: $('sn').value, price: +$('sp').value }); db.set('bp_services', s); e.target.reset(); r_manage(); }
+function addStylist(e) { e.preventDefault(); const s = db.get('bp_stylists'); s.push({ id: Date.now(), name: $('tn').value, skill: $('ts').value }); db.set('bp_stylists', s); e.target.reset(); r_manage(); }
+function delItem(key, id) { db.set(key, db.get(key).filter(x => x.id !== id)); r_manage(); }
+
+nav(); show('home');
+</script>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 5 - SkyWay Flight Reservation</title>
+<style>
+  body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f3f5fb; color: #1a1f36; font-size: 14px; }
+  header { background: #3b2f8f; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 21px; }
+  button { background: #3b2f8f; color: #fff; border: 0; padding: 7px 12px; border-radius: 4px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #3b2f8f; }
+  .red { background: #b0303a; }
+  main { max-width: 980px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #d3d6e8; max-width: 480px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #d3d6e8; padding: 6px; text-align: left; }
+  th { background: #e4e2f6; }
+  .row { display: flex; gap: 6px; }
+  .plane { display: grid; grid-template-columns: repeat(3, 40px) 20px repeat(3, 40px); gap: 5px; margin: 10px 0; }
+  .seat { text-align: center; padding: 6px 0; border: 1px solid #888; cursor: pointer; background: #fff; font-size: 12px; }
+  .seat.biz { border-color: #c79a2c; background: #fff7e0; }
+  .seat.taken { background: #bbb; cursor: not-allowed; }
+  .seat.pick { background: #3b2f8f; color: #fff; }
+  .ticket { background: #fff; border: 2px solid #3b2f8f; padding: 15px; max-width: 600px; }
+  @media print { header, button { display: none; } }
+</style>
+</head>
+<body>
+<header><h1>SkyWay Airlines</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="search">
+  <h2>Search Flight</h2>
+  <form onsubmit="searchFlights(event)">
+    <div class="row"><input id="sf" placeholder="From (e.g. CJB)" required><input id="st" placeholder="To (e.g. DEL)" required></div>
+    Date <input type="date" id="sd" required>
+    Class <select id="sc"><option>Economy</option><option>Business</option></select>
+    <button>Search Flight</button>
+  </form>
+  <div id="flightRes"></div>
+</section>
+
+<section id="book" hidden>
+  <h2>Book Ticket</h2>
+  <div class="box" id="fInfo"></div>
+  <p>Business rows 1-2 (gold), Economy rows 3 onward. Click to pick seats.</p>
+  <div class="plane" id="seatMap"></div>
+  <form onsubmit="toPayment(event)">
+    <div id="paxRows"></div>
+    <p id="fare"></p>
+    <button>Continue to Payment</button>
+  </form>
+</section>
+
+<section id="payment" hidden>
+  <h2>Ticket Payment</h2>
+  <form onsubmit="pay(event)">
+    <p id="payAmt"></p>
+    Method <select id="pm"><option>Credit / Debit Card</option><option>UPI</option><option>Net Banking</option></select>
+    <input placeholder="Name on card / UPI ID" required>
+    <input placeholder="Card number (test: 4111 1111 1111 1111)" pattern="[0-9 ]{12,19}" required>
+    <button>Pay Now</button>
+  </form>
+</section>
+
+<section id="ticketView" hidden>
+  <div class="ticket" id="ticketBox"></div>
+  <button onclick="window.print()">Print Ticket</button>
+</section>
+
+<section id="status" hidden>
+  <h2>View Booking Status</h2>
+  <form onsubmit="checkStatus(event)"><input id="bkId" placeholder="Booking ID" required><button>Check Status</button></form>
+  <div id="statusRes"></div>
+</section>
+
+<section id="login" hidden>
+  <h2>User / Administrator Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button> <a href="#" onclick="show('forgot')">Forgot password?</a>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="forgot" hidden>
+  <h2>Forgot Password</h2>
+  <form onsubmit="resetPass(event)">
+    <input id="fu" placeholder="Username" required>
+    <input id="fe" type="email" placeholder="Registered email" required>
+    <input id="fp" type="password" placeholder="New password" required>
+    <button>Reset Password</button>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required>
+    <input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required>
+    <input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<section id="mytickets" hidden>
+  <h2>My Tickets / Itineraries</h2>
+  <div id="myList"></div>
+</section>
+
+<section id="feedback" hidden>
+  <h2>Customer Feedback</h2>
+  <form onsubmit="sendFeedback(event)">
+    Rating <select id="fbr"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="fbt" rows="4" placeholder="Tell us about your trip" required></textarea>
+    <button>Send Feedback</button>
+  </form>
+</section>
+
+<!-- ADMIN -->
+<section id="adminFlights" hidden>
+  <h2>Manage Flight Schedule</h2>
+  <form onsubmit="saveFlight(event)">
+    <input type="hidden" id="fid">
+    <div class="row"><input id="fno" placeholder="Flight no (SW101)" required><input id="fair" placeholder="Airline" required></div>
+    <div class="row"><input id="ffrom" placeholder="From" required><input id="fto" placeholder="To" required></div>
+    <input type="date" id="fdate" required>
+    <div class="row"><input type="time" id="fdep" required><input type="time" id="farr" required></div>
+    Seat rows (6 seats per row) <input type="number" id="frows" min="3" max="30" required>
+    <div class="row"><input type="number" id="feco" placeholder="Economy fare" required><input type="number" id="fbiz" placeholder="Business fare" required></div>
+    <button>Save Flight</button>
+  </form>
+  <div id="flightList"></div>
+</section>
+
+<section id="report" hidden>
+  <h2>Admin Report</h2>
+  <div id="repBox"></div>
+  <h3>Customer Feedback</h3><div id="fbList"></div>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+if (!db.get('fl_flights')) db.set('fl_flights', [
+  { id: 1, no: 'SW101', air: 'SkyWay', from: 'CJB', to: 'DEL', date: today(), dep: '07:00', arr: '10:05', rows: 8, eco: 5600, biz: 14500 },
+  { id: 2, no: 'SW204', air: 'SkyWay', from: 'CJB', to: 'BOM', date: today(), dep: '13:30', arr: '15:20', rows: 6, eco: 4200, biz: 11000 }
+]);
+let me = db.get('fl_session', null), cur = null, picked = [], pending = null;
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['search', 'Search Flight'], ['status', 'Booking Status']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['adminFlights', 'Flights'], ['report', 'Report']);
+  else b.push(['mytickets', 'My Tickets'], ['feedback', 'Feedback']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('fl_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, pass: $('rp').value });
+  db.set('fl_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('fl_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('fl_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'adminFlights' : 'search');
+}
+function logout() { me = null; localStorage.removeItem('fl_session'); nav(); show('search'); }
+function resetPass(e) {
+  e.preventDefault();
+  const users = db.get('fl_users', []);
+  const u = users.find(x => x.user === $('fu').value && x.email === $('fe').value);
+  if (!u) return alert('Username and email do not match');
+  u.pass = $('fp').value; db.set('fl_users', users); alert('Password reset. Please login.'); show('login');
+}
+
+// ---------- search & seats ----------
+const taken = id => db.get('fl_bookings', []).filter(b => b.flightId === id && b.status === 'Confirmed').flatMap(b => b.seats);
+const isBiz = s => parseInt(s) <= 2;
+function searchFlights(e) {
+  e.preventDefault();
+  const f = $('sf').value.toUpperCase(), t = $('st').value.toUpperCase(), d = $('sd').value, c = $('sc').value;
+  const res = db.get('fl_flights', []).filter(x => x.from.toUpperCase() === f && x.to.toUpperCase() === t && x.date === d);
+  $('flightRes').innerHTML = res.length ? '<table><tr><th>Flight</th><th>Departs</th><th>Arrives</th><th>Fare</th><th>Seats left</th><th></th></tr>' +
+    res.map(x => { const total = c === 'Business' ? 12 : (x.rows - 2) * 6;
+      const left = total - taken(x.id).filter(s => isBiz(s) === (c === 'Business')).length;
+      return `<tr><td>${x.no} (${x.air})</td><td>${x.dep}</td><td>${x.arr}</td><td>Rs. ${c === 'Business' ? x.biz : x.eco}</td><td>${left}</td>
+      <td><button onclick="openFlight(${x.id},'${c}')">Select</button></td></tr>`; }).join('') + '</table>' : '<p>No flights found.</p>';
+}
+function openFlight(id, cls) {
+  if (!me || me.role !== 'user') { alert('Please login to book'); return show('login'); }
+  cur = { ...db.get('fl_flights', []).find(f => f.id === id), cls }; picked = [];
+  $('fInfo').innerHTML = `<b>${cur.no}</b> ${cur.from} ${cur.dep} to ${cur.to} ${cur.arr} on ${cur.date} | ${cls}`;
+  drawSeats(); show('book');
+}
+function drawSeats() {
+  const t = taken(cur.id);
+  let html = '';
+  for (let r = 1; r <= cur.rows; r++) LETTERS.forEach((L, i) => {
+    const s = r + L, biz = r <= 2;
+    if (i === 3) html += '<span></span>';
+    html += `<div class="seat ${biz ? 'biz' : ''} ${t.includes(s) ? 'taken' : ''} ${picked.includes(s) ? 'pick' : ''}" onclick="pickSeat('${s}')">${s}</div>`;
+  });
+  $('seatMap').innerHTML = html;
+  $('paxRows').innerHTML = picked.map(s => `<b>Seat ${s}</b><div class="row"><input placeholder="Passenger name" required><input type="number" placeholder="Age" required></div>`).join('');
+  $('fare').textContent = picked.length ? 'Total: Rs. ' + picked.length * (cur.cls === 'Business' ? cur.biz : cur.eco) : '';
+}
+function pickSeat(s) {
+  if (taken(cur.id).includes(s)) return;
+  if (isBiz(s) !== (cur.cls === 'Business')) return alert('Pick a ' + cur.cls + ' seat');
+  picked = picked.includes(s) ? picked.filter(x => x !== s) : [...picked, s];
+  drawSeats();
+}
+function toPayment(e) {
+  e.preventDefault();
+  if (!picked.length) return alert('Pick at least one seat');
+  const ins = [...$('paxRows').querySelectorAll('input')];
+  pending = { flightId: cur.id, cls: cur.cls, seats: picked,
+    pax: picked.map((s, i) => ({ seat: s, name: ins[i * 2].value, age: ins[i * 2 + 1].value })),
+    amount: picked.length * (cur.cls === 'Business' ? cur.biz : cur.eco) };
+  $('payAmt').textContent = 'Amount to pay: Rs. ' + pending.amount;
+  show('payment');
+}
+function pay(e) {
+  e.preventDefault();
+  const list = db.get('fl_bookings', []);
+  const b = { id: 'SW' + String(Date.now()).slice(-6), user: me.user, ...pending, pay: $('pm').value, status: 'Confirmed', bookedOn: today() };
+  list.push(b); db.set('fl_bookings', list); e.target.reset();
+  alert('Payment successful. E-ticket emailed. Booking ID: ' + b.id);
+  showTicket(b.id);
+}
+function showTicket(id) {
+  const b = db.get('fl_bookings', []).find(x => x.id === id);
+  const f = db.get('fl_flights', []).find(x => x.id === b.flightId) || {};
+  $('ticketBox').innerHTML = `<h2>E-Ticket / Itinerary</h2><p><b>Booking ID: ${b.id}</b> | ${b.status}</p>
+    <p>${f.no} | ${f.from} ${f.dep} to ${f.to} ${f.arr} | ${f.date} | ${b.cls}</p>
+    <table><tr><th>Passenger</th><th>Age</th><th>Seat</th></tr>${b.pax.map(p => `<tr><td>${p.name}</td><td>${p.age}</td><td>${p.seat}</td></tr>`).join('')}</table>
+    <p>Paid: Rs. ${b.amount} by ${b.pay}</p>`;
+  show('ticketView');
+}
+function checkStatus(e) {
+  e.preventDefault();
+  const b = db.get('fl_bookings', []).find(x => x.id === $('bkId').value.trim().toUpperCase());
+  $('statusRes').innerHTML = b ? `<div class="box">Booking <b>${b.id}</b> is <b>${b.status}</b>. Seats: ${b.seats.join(', ')}
+    <br><button onclick="showTicket('${b.id}')">View / Print Ticket</button></div>` : '<p>Booking ID not found.</p>';
+}
+function r_mytickets() {
+  const fl = db.get('fl_flights', []);
+  const mine = db.get('fl_bookings', []).filter(b => b.user === me.user);
+  $('myList').innerHTML = mine.length ? '<table><tr><th>Booking</th><th>Flight</th><th>Date</th><th>Seats</th><th>Amount</th><th>Status</th><th></th></tr>' +
+    mine.map(b => { const f = fl.find(x => x.id === b.flightId) || {};
+      return `<tr><td>${b.id}</td><td>${f.no} ${f.from}-${f.to}</td><td>${f.date}</td><td>${b.seats.join(', ')}</td><td>Rs. ${b.amount}</td><td>${b.status}</td>
+      <td><button onclick="showTicket('${b.id}')">Print</button>${b.status === 'Confirmed' ? `<button class="red" onclick="cancelTicket('${b.id}')">Cancel</button>` : ''}</td></tr>`; }).join('') + '</table>'
+    : '<p>No tickets yet.</p>';
+}
+function cancelTicket(id) {
+  if (!confirm('Cancel this ticket? 80% of the fare will be refunded.')) return;
+  const list = db.get('fl_bookings', []);
+  const b = list.find(x => x.id === id);
+  b.status = 'Cancelled'; b.refund = Math.round(b.amount * 0.8);
+  db.set('fl_bookings', list); alert('Ticket cancelled. Refund: Rs. ' + b.refund); r_mytickets();
+}
+function sendFeedback(e) {
+  e.preventDefault();
+  const f = db.get('fl_feedback', []);
+  f.push({ user: me.user, rating: $('fbr').value, text: $('fbt').value, date: today() });
+  db.set('fl_feedback', f); e.target.reset(); alert('Thank you for your feedback');
+}
+
+// ---------- admin ----------
+const fFields = { fno: 'no', fair: 'air', ffrom: 'from', fto: 'to', fdate: 'date', fdep: 'dep', farr: 'arr', frows: 'rows', feco: 'eco', fbiz: 'biz' };
+function r_adminFlights() {
+  $('flightList').innerHTML = '<table><tr><th>Flight</th><th>Route</th><th>Date</th><th>Time</th><th>Booked seats</th><th>Fares</th><th></th></tr>' +
+    db.get('fl_flights', []).map(f => `<tr><td>${f.no}</td><td>${f.from}-${f.to}</td><td>${f.date}</td><td>${f.dep}-${f.arr}</td>
+    <td>${taken(f.id).length}/${f.rows * 6}</td><td>E: ${f.eco}<br>B: ${f.biz}</td>
+    <td><button onclick="editFlight(${f.id})">Edit</button><button class="red" onclick="delFlight(${f.id})">Delete</button></td></tr>`).join('') + '</table>';
+}
+function saveFlight(e) {
+  e.preventDefault();
+  const list = db.get('fl_flights', []), data = {};
+  for (const k in fFields) data[fFields[k]] = $(k).value;
+  ['rows', 'eco', 'biz'].forEach(k => data[k] = +data[k]);
+  if ($('fid').value) Object.assign(list.find(f => f.id == $('fid').value), data);
+  else list.push({ id: Date.now(), ...data });
+  db.set('fl_flights', list); e.target.reset(); $('fid').value = ''; r_adminFlights();
+}
+function editFlight(id) { const f = db.get('fl_flights', []).find(x => x.id === id); $('fid').value = id; for (const k in fFields) $(k).value = f[fFields[k]]; }
+function delFlight(id) { if (confirm('Delete flight?')) { db.set('fl_flights', db.get('fl_flights', []).filter(f => f.id !== id)); r_adminFlights(); } }
+function r_report() {
+  const b = db.get('fl_bookings', []), conf = b.filter(x => x.status === 'Confirmed');
+  $('repBox').innerHTML = `<table><tr><th>Registered users</th><td>${db.get('fl_users', []).length}</td></tr>
+    <tr><th>Confirmed bookings</th><td>${conf.length}</td></tr><tr><th>Cancelled bookings</th><td>${b.length - conf.length}</td></tr>
+    <tr><th>Passengers flown</th><td>${conf.reduce((s, x) => s + x.seats.length, 0)}</td></tr>
+    <tr><th>Revenue</th><td>Rs. ${conf.reduce((s, x) => s + x.amount, 0)}</td></tr></table>
+    <table><tr><th>Booking</th><th>User</th><th>Seats</th><th>Amount</th><th>Status</th></tr>` +
+    b.map(x => `<tr><td>${x.id}</td><td>${x.user}</td><td>${x.seats.join(', ')}</td><td>${x.amount}</td><td>${x.status}</td></tr>`).join('') + '</table>';
+  $('fbList').innerHTML = db.get('fl_feedback', []).map(f => `<p>${'★'.repeat(f.rating)} ${f.text} <i>- ${f.user}, ${f.date}</i></p>`).join('') || '<p>No feedback yet.</p>';
+}
+
+nav(); show('search');
+</script>
+</body>
+</html>

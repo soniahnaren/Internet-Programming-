@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 8 - MedCare Appointments</title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; margin: 0; background: #f1f7f7; color: #17302f; font-size: 14px; }
+  header { background: #0b6e69; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 21px; }
+  button { background: #0b6e69; color: #fff; border: 0; padding: 7px 12px; border-radius: 4px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #0b6e69; }
+  .red { background: #b23b3b; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #c4dcda; max-width: 480px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #c4dcda; padding: 6px; text-align: left; }
+  th { background: #d9ecea; }
+  .row { display: flex; gap: 6px; }
+  .reminder { background: #fff3c4; padding: 10px; margin: 8px 0; }
+  iframe { width: 100%; height: 300px; border: 0; }
+</style>
+</head>
+<body>
+<header><h1>MedCare</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Find a Doctor</h2>
+  <div class="row" style="max-width:700px">
+    <select id="fsp" onchange="r_home()"></select>
+    <select id="fcity" onchange="r_home()"></select>
+    <select id="fsort" onchange="r_home()"><option value="rating">Sort by rating</option><option value="name">Sort by name</option></select>
+  </div>
+  <div id="docList"></div>
+  <h2>Hospitals</h2>
+  <div id="hospList"></div>
+</section>
+
+<section id="hospView" hidden>
+  <div class="box" id="hvInfo" style="max-width:700px"></div>
+  <iframe id="map" title="Hospital location"></iframe>
+</section>
+
+<section id="book" hidden>
+  <h2>Book Appointment</h2>
+  <div class="box" id="bkDoc"></div>
+  <form onsubmit="bookAppt(event)">
+    Date <input type="date" id="bdate" onchange="fillSlots()" required>
+    Time <select id="bslot"></select>
+    <h3>Check-in Form</h3>
+    <div class="row"><input type="number" id="cage" placeholder="Age" required><select id="cgen"><option>Male</option><option>Female</option><option>Other</option></select></div>
+    <textarea id="csym" placeholder="Symptoms / reason for visit" required></textarea>
+    <input id="callergy" placeholder="Allergies (if any)">
+    Reminder by <select id="crem"><option>Email</option><option>SMS</option><option>Both</option></select>
+    <button>Book Appointment</button>
+  </form>
+</section>
+
+<section id="patient" hidden>
+  <div id="reminders"></div>
+  <h2>Upcoming Appointments</h2><div id="upList"></div>
+  <h2>Past Appointments and Check-in Details</h2><div id="pastList"></div>
+  <h2>My Details</h2>
+  <form onsubmit="saveProfile(event)">
+    <input id="pn" placeholder="Name" required><input id="pph" placeholder="Phone" required><input id="pe" type="email" placeholder="Email" required>
+    <input id="pcity" placeholder="City" required>
+    <button>Save Details</button>
+  </form>
+</section>
+
+<section id="review" hidden>
+  <h2>Review Doctor</h2>
+  <form onsubmit="saveReview(event)">
+    <p id="rvDoc"></p>
+    <select id="rvRate"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="rvText" placeholder="Your experience" required></textarea>
+    <button>Post Review</button>
+  </form>
+</section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <select id="lrole"><option value="patient">Patient</option><option value="hospital">Hospital</option><option value="admin">Admin</option></select>
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin: admin / admin123 | Sample hospital: kmch / kmch123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Patient Sign Up</h2>
+  <form onsubmit="registerPatient(event)">
+    <input id="rn" placeholder="Full name" required><input id="ru" placeholder="Username" required>
+    <input id="rph" placeholder="Phone" required><input id="re" type="email" placeholder="Email" required>
+    <input id="rcity" placeholder="City" required><input id="rp" type="password" placeholder="Password" required>
+    <button>Sign Up</button>
+  </form>
+  <h2>Hospital Registration</h2>
+  <form onsubmit="registerHospital(event)">
+    <input id="hn" placeholder="Hospital name" required><input id="hu" placeholder="Username" required>
+    <input id="hp" type="password" placeholder="Password" required>
+    <button>Register Hospital</button>
+  </form>
+</section>
+
+<!-- HOSPITAL -->
+<section id="hospital" hidden>
+  <h2>Hospital Details and Location</h2>
+  <form onsubmit="saveHospital(event)">
+    <input id="hdn" placeholder="Hospital name" required>
+    <input id="hdc" placeholder="City" required>
+    <textarea id="hda" placeholder="Address" required></textarea>
+    <input id="hdph" placeholder="Phone" required>
+    <div class="row"><input id="hdlat" placeholder="Latitude (11.01)" required><input id="hdlng" placeholder="Longitude (76.96)" required></div>
+    <button>Save Details</button>
+  </form>
+  <h2>Appointments at this Hospital</h2><div id="hospAppts"></div>
+</section>
+
+<!-- ADMIN -->
+<section id="admin" hidden>
+  <h2>Statistics</h2><div id="stats"></div>
+  <h2>Manage Appointments</h2><div id="allAppts"></div>
+</section>
+
+<section id="doctors" hidden>
+  <h2>Add / Update Doctor</h2>
+  <form onsubmit="saveDoctor(event)">
+    <input type="hidden" id="did">
+    <input id="dn" placeholder="Doctor name" required>
+    <input id="dsp" placeholder="Specialty (Cardiology...)" required>
+    <select id="dh"></select>
+    <input type="number" id="dfee" placeholder="Consultation fee" required>
+    <button>Save Doctor</button>
+  </form>
+  <div id="docAdmin"></div>
+  <h2>Rating Details</h2><div id="ratings"></div>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00'];
+
+if (!db.get('mc_hosp')) db.set('mc_hosp', [
+  { id: 1, user: 'kmch', pass: 'kmch123', name: 'KMCH Hospital', city: 'Coimbatore', addr: 'Avinashi Road, Coimbatore', phone: '0422 4323800', lat: '11.0426', lng: '77.0373' },
+  { id: 2, user: 'apollo', pass: 'apollo123', name: 'Apollo Hospital', city: 'Chennai', addr: 'Greams Road, Chennai', phone: '044 28290200', lat: '13.0614', lng: '80.2516' }
+]);
+if (!db.get('mc_docs')) db.set('mc_docs', [
+  { id: 1, name: 'Dr. Ravi Kumar', sp: 'Cardiology', hosp: 1, fee: 600 },
+  { id: 2, name: 'Dr. Anitha S', sp: 'Dermatology', hosp: 1, fee: 400 },
+  { id: 3, name: 'Dr. Suresh Babu', sp: 'Orthopedics', hosp: 2, fee: 700 }
+]);
+let me = db.get('mc_session', null), curDoc = null, reviewAppt = null;
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Find Doctor']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['admin', 'Appointments'], ['doctors', 'Doctors']);
+  else if (me.role === 'hospital') b.push(['hospital', 'My Hospital']);
+  else b.push(['patient', 'My Appointments']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+const hosp = id => db.get('mc_hosp').find(h => h.id === id) || { name: '-', city: '-' };
+const doc = id => db.get('mc_docs').find(d => d.id === id) || { name: '(removed)', sp: '' };
+function rating(docId) {
+  const r = db.get('mc_reviews', []).filter(x => x.doc === docId);
+  return r.length ? (r.reduce((s, x) => s + x.rate, 0) / r.length).toFixed(1) : 0;
+}
+
+// ---------- auth ----------
+function registerPatient(e) {
+  e.preventDefault();
+  const p = db.get('mc_patients', []);
+  if (p.find(x => x.user === $('ru').value)) return alert('Username already taken');
+  p.push({ name: $('rn').value, user: $('ru').value, phone: $('rph').value, email: $('re').value, city: $('rcity').value, pass: $('rp').value });
+  db.set('mc_patients', p); alert('Signed up. Please login.'); e.target.reset(); show('login');
+}
+function registerHospital(e) {
+  e.preventDefault();
+  const h = db.get('mc_hosp');
+  if (h.find(x => x.user === $('hu').value)) return alert('Username already taken');
+  h.push({ id: Date.now(), user: $('hu').value, pass: $('hp').value, name: $('hn').value, city: '', addr: '', phone: '', lat: '', lng: '' });
+  db.set('mc_hosp', h); alert('Hospital registered. Login and complete your details.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const role = $('lrole').value, u = $('lu').value, p = $('lp').value;
+  if (role === 'admin' && u === 'admin' && p === 'admin123') me = { user: u, role };
+  else if (role === 'hospital' && db.get('mc_hosp').find(x => x.user === u && x.pass === p)) me = { user: u, role };
+  else if (role === 'patient' && db.get('mc_patients', []).find(x => x.user === u && x.pass === p)) me = { user: u, role };
+  else return alert('Wrong login details');
+  db.set('mc_session', me); e.target.reset(); nav();
+  show({ admin: 'admin', hospital: 'hospital', patient: 'patient' }[role]);
+}
+function logout() { me = null; localStorage.removeItem('mc_session'); nav(); show('home'); }
+
+// ---------- search ----------
+function r_home() {
+  const docs = db.get('mc_docs'), hs = db.get('mc_hosp');
+  if (!$('fsp').options.length) {
+    $('fsp').innerHTML = '<option value="">All specialties</option>' + [...new Set(docs.map(d => d.sp))].map(s => `<option>${s}</option>`).join('');
+    $('fcity').innerHTML = '<option value="">All locations</option>' + [...new Set(hs.map(h => h.city).filter(Boolean))].map(c => `<option>${c}</option>`).join('');
+  }
+  const sp = $('fsp').value, city = $('fcity').value;
+  let list = docs.filter(d => (!sp || d.sp === sp) && (!city || hosp(d.hosp).city === city));
+  list.sort((a, b) => $('fsort').value === 'rating' ? rating(b.id) - rating(a.id) : a.name.localeCompare(b.name));
+  $('docList').innerHTML = list.length ? '<table><tr><th>Doctor</th><th>Specialty</th><th>Hospital</th><th>Fee</th><th>Rating</th><th></th></tr>' +
+    list.map(d => `<tr><td>${d.name}</td><td>${d.sp}</td><td>${hosp(d.hosp).name}, ${hosp(d.hosp).city}</td><td>Rs. ${d.fee}</td>
+    <td>${rating(d.id) || 'New'} ${rating(d.id) ? '★' : ''}</td><td><button onclick="startBook(${d.id})">Book</button></td></tr>`).join('') + '</table>' : '<p>No doctors found.</p>';
+  $('hospList').innerHTML = '<table><tr><th>Hospital</th><th>City</th><th>Address</th><th>Phone</th><th></th></tr>' +
+    hs.filter(h => h.city && (!city || h.city === city)).map(h => `<tr><td>${h.name}</td><td>${h.city}</td><td>${h.addr}</td><td>${h.phone}</td>
+    <td><button onclick="viewHosp(${h.id})">View Map</button></td></tr>`).join('') + '</table>';
+}
+function viewHosp(id) {
+  const h = hosp(id);
+  const docs = db.get('mc_docs').filter(d => d.hosp === id);
+  $('hvInfo').innerHTML = `<h2>${h.name}</h2><p>${h.addr}<br>Phone: ${h.phone}</p><p>Doctors: ${docs.map(d => d.name + ' (' + d.sp + ')').join(', ') || 'None listed'}</p>`;
+  $('map').src = `https://maps.google.com/maps?q=${h.lat},${h.lng}&z=15&output=embed`;
+  show('hospView');
+}
+
+// ---------- booking ----------
+function startBook(id) {
+  if (!me || me.role !== 'patient') { alert('Please login as a patient to book'); return show('login'); }
+  curDoc = doc(id);
+  $('bkDoc').innerHTML = `<b>${curDoc.name}</b> - ${curDoc.sp}<br>${hosp(curDoc.hosp).name} | Fee Rs. ${curDoc.fee}`;
+  $('bdate').value = today(); show('book'); fillSlots();
+}
+function fillSlots() {
+  const d = $('bdate').value, now = new Date().toTimeString().slice(0, 5);
+  const taken = db.get('mc_appts', []).filter(a => a.doc === curDoc.id && a.date === d && a.status !== 'Cancelled').map(a => a.slot);
+  const free = SLOTS.filter(s => !taken.includes(s) && !(d === today() && s <= now));
+  $('bslot').innerHTML = free.length ? free.map(s => `<option>${s}</option>`).join('') : '<option value="">No slots free</option>';
+}
+function bookAppt(e) {
+  e.preventDefault();
+  if (!$('bslot').value) return alert('No free slot on this date');
+  if ($('bdate').value < today()) return alert('Pick today or a later date');
+  const a = db.get('mc_appts', []);
+  a.push({ id: Date.now(), patient: me.user, doc: curDoc.id, hosp: curDoc.hosp, date: $('bdate').value, slot: $('bslot').value, status: 'Booked',
+    checkin: { age: $('cage').value, gender: $('cgen').value, symptoms: $('csym').value, allergy: $('callergy').value }, remind: $('crem').value });
+  db.set('mc_appts', a); e.target.reset();
+  alert('Appointment booked. Reminder will be sent by ' + a[a.length - 1].remind + '.'); show('patient');
+}
+function apptTable(list, mode) {
+  if (!list.length) return '<p>No appointments.</p>';
+  return '<table><tr>' + (mode !== 'patient' ? '<th>Patient</th>' : '') + '<th>Date</th><th>Time</th><th>Doctor</th><th>Hospital</th><th>Check-in details</th><th>Status</th><th></th></tr>' +
+    list.map(a => `<tr>${mode !== 'patient' ? `<td>${a.patient}</td>` : ''}<td>${a.date}</td><td>${a.slot}</td><td>${doc(a.doc).name}</td><td>${hosp(a.hosp).name}</td>
+    <td>Age ${a.checkin.age}, ${a.checkin.gender}<br>${a.checkin.symptoms}${a.checkin.allergy ? '<br>Allergy: ' + a.checkin.allergy : ''}</td><td>${a.status}</td><td>` +
+    (mode === 'patient'
+      ? (a.status === 'Booked' ? `<button class="red" onclick="setStatus(${a.id},'Cancelled')">Cancel</button>` : '') +
+        (a.status === 'Completed' && !a.reviewed ? `<button onclick="startReview(${a.id})">Review Doctor</button>` : '')
+      : `<select onchange="setStatus(${a.id}, this.value)">${['Booked', 'Checked-in', 'Completed', 'Cancelled'].map(s => `<option ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`) +
+    '</td></tr>').join('') + '</table>';
+}
+function setStatus(id, st) {
+  const a = db.get('mc_appts', []);
+  a.find(x => x.id === id).status = st;
+  db.set('mc_appts', a); show({ admin: 'admin', hospital: 'hospital', patient: 'patient' }[me.role]);
+}
+function r_patient() {
+  const mine = db.get('mc_appts', []).filter(a => a.patient === me.user);
+  const up = mine.filter(a => a.status === 'Booked' && a.date >= today());
+  $('upList').innerHTML = apptTable(up, 'patient');
+  $('pastList').innerHTML = apptTable(mine.filter(a => !up.includes(a)), 'patient');
+  $('reminders').innerHTML = up.slice(0, 3).map(a => `<div class="reminder">Reminder: ${doc(a.doc).name} on ${a.date} at ${a.slot}, ${hosp(a.hosp).name}</div>`).join('');
+  const p = db.get('mc_patients', []).find(x => x.user === me.user);
+  $('pn').value = p.name; $('pph').value = p.phone; $('pe').value = p.email; $('pcity').value = p.city;
+}
+function saveProfile(e) {
+  e.preventDefault();
+  const p = db.get('mc_patients', []);
+  Object.assign(p.find(x => x.user === me.user), { name: $('pn').value, phone: $('pph').value, email: $('pe').value, city: $('pcity').value });
+  db.set('mc_patients', p); alert('Details saved');
+}
+function startReview(id) { reviewAppt = db.get('mc_appts', []).find(a => a.id === id); $('rvDoc').textContent = doc(reviewAppt.doc).name; show('review'); }
+function saveReview(e) {
+  e.preventDefault();
+  const r = db.get('mc_reviews', []);
+  r.push({ doc: reviewAppt.doc, patient: me.user, rate: +$('rvRate').value, text: $('rvText').value, date: today() });
+  db.set('mc_reviews', r);
+  const a = db.get('mc_appts', []); a.find(x => x.id === reviewAppt.id).reviewed = true; db.set('mc_appts', a);
+  e.target.reset(); alert('Review posted'); show('patient');
+}
+
+// ---------- hospital ----------
+function r_hospital() {
+  const h = db.get('mc_hosp').find(x => x.user === me.user);
+  $('hdn').value = h.name; $('hdc').value = h.city; $('hda').value = h.addr; $('hdph').value = h.phone; $('hdlat').value = h.lat; $('hdlng').value = h.lng;
+  $('hospAppts').innerHTML = apptTable(db.get('mc_appts', []).filter(a => a.hosp === h.id), 'hospital');
+}
+function saveHospital(e) {
+  e.preventDefault();
+  const hs = db.get('mc_hosp');
+  Object.assign(hs.find(x => x.user === me.user), { name: $('hdn').value, city: $('hdc').value, addr: $('hda').value, phone: $('hdph').value, lat: $('hdlat').value, lng: $('hdlng').value });
+  db.set('mc_hosp', hs); $('fsp').innerHTML = ''; alert('Hospital details and location saved');
+}
+
+// ---------- admin ----------
+function r_admin() {
+  const a = db.get('mc_appts', []);
+  const count = s => a.filter(x => x.status === s).length;
+  $('stats').innerHTML = `<table><tr><th>Total</th><th>Booked</th><th>Checked-in</th><th>Completed</th><th>Cancelled</th><th>Patients</th><th>Hospitals</th></tr>
+    <tr><td>${a.length}</td><td>${count('Booked')}</td><td>${count('Checked-in')}</td><td>${count('Completed')}</td><td>${count('Cancelled')}</td>
+    <td>${db.get('mc_patients', []).length}</td><td>${db.get('mc_hosp').length}</td></tr></table>
+    <table><tr><th>Doctor</th><th>Appointments</th></tr>` + db.get('mc_docs').map(d => `<tr><td>${d.name}</td><td>${a.filter(x => x.doc === d.id).length}</td></tr>`).join('') + '</table>';
+  $('allAppts').innerHTML = apptTable(a, 'admin');
+}
+function r_doctors() {
+  $('dh').innerHTML = db.get('mc_hosp').map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+  $('docAdmin').innerHTML = '<table><tr><th>Name</th><th>Specialty</th><th>Hospital</th><th>Fee</th><th></th></tr>' +
+    db.get('mc_docs').map(d => `<tr><td>${d.name}</td><td>${d.sp}</td><td>${hosp(d.hosp).name}</td><td>${d.fee}</td>
+    <td><button onclick="editDoctor(${d.id})">Edit</button><button class="red" onclick="delDoctor(${d.id})">Delete</button></td></tr>`).join('') + '</table>';
+  const r = db.get('mc_reviews', []);
+  $('ratings').innerHTML = r.length ? '<table><tr><th>Doctor</th><th>Patient</th><th>Rating</th><th>Review</th><th>Date</th></tr>' +
+    r.map(x => `<tr><td>${doc(x.doc).name}</td><td>${x.patient}</td><td>${x.rate} ★</td><td>${x.text}</td><td>${x.date}</td></tr>`).join('') + '</table>' : '<p>No ratings yet.</p>';
+}
+function saveDoctor(e) {
+  e.preventDefault();
+  const d = db.get('mc_docs');
+  const data = { name: $('dn').value, sp: $('dsp').value, hosp: +$('dh').value, fee: +$('dfee').value };
+  if ($('did').value) Object.assign(d.find(x => x.id == $('did').value), data); else d.push({ id: Date.now(), ...data });
+  db.set('mc_docs', d); e.target.reset(); $('did').value = ''; $('fsp').innerHTML = ''; r_doctors();
+}
+function editDoctor(id) { const d = doc(id); $('did').value = id; $('dn').value = d.name; $('dsp').value = d.sp; $('dh').value = d.hosp; $('dfee').value = d.fee; }
+function delDoctor(id) { if (confirm('Delete doctor?')) { db.set('mc_docs', db.get('mc_docs').filter(d => d.id !== id)); $('fsp').innerHTML = ''; r_doctors(); } }
+
+nav(); show('home');
+</script>
+</body>
+</html>

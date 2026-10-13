@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 9 - TechSavvy Electronics</title>
+<style>
+  body { font-family: Tahoma, Verdana, sans-serif; margin: 0; background: #eef2f5; color: #15202b; font-size: 14px; }
+  header { background: #12324a; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 21px; }
+  button { background: #1f6fb2; color: #fff; border: 0; padding: 7px 12px; border-radius: 3px; cursor: pointer; margin: 2px; }
+  header button { background: #fff; color: #12324a; }
+  .red { background: #b33a3a; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #cfd8e0; max-width: 480px; margin-bottom: 15px; }
+  input, select, textarea { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #cfd8e0; padding: 6px; text-align: left; }
+  th { background: #dde6ee; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .card { background: #fff; border: 1px solid #cfd8e0; padding: 10px; }
+  .icon { font-size: 48px; text-align: center; }
+  .cats button { background: #fff; color: #12324a; border: 1px solid #12324a; }
+  .off { color: #b33a3a; font-weight: bold; }
+  s { color: #888; }
+</style>
+</head>
+<body>
+<header><h1>TechSavvy</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Shop by Category</h2>
+  <div class="cats" id="catBar"></div>
+  <div class="cats" id="subBar"></div>
+  <input id="q" placeholder="Search phones, laptops, accessories..." oninput="r_home()" style="max-width:480px">
+  <div class="grid" id="prodGrid"></div>
+  <div id="recoBox"></div>
+</section>
+
+<section id="detail" hidden>
+  <div class="box" id="dBox" style="max-width:650px"></div>
+  <h3>Reviews</h3><div id="dReviews"></div>
+  <form onsubmit="addReview(event)" id="rvForm">
+    <select id="rvR"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+    <textarea id="rvT" placeholder="Write a review" required></textarea>
+    <button>Post Review</button>
+  </form>
+</section>
+
+<section id="cart" hidden>
+  <h2>Shopping Cart</h2>
+  <div id="cartBox"></div>
+  <form onsubmit="checkout(event)">
+    <h3>Check Out</h3>
+    <input id="coN" placeholder="Name" required>
+    <input id="coPh" placeholder="Phone" required>
+    <textarea id="coA" placeholder="Delivery address" required></textarea>
+    <input id="coC" placeholder="Coupon code (try TECH10)">
+    Payment <select id="coP"><option>Card</option><option>UPI</option><option>Net Banking</option><option>Cash on Delivery</option></select>
+    <p id="coTotal"></p>
+    <button>Place Order</button>
+  </form>
+</section>
+
+<section id="wishlist" hidden><h2>My Wish List</h2><div class="grid" id="wishGrid"></div></section>
+
+<section id="orders" hidden><h2>Order History and Status</h2><div id="orderBox"></div></section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required><input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required><input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<!-- ADMIN -->
+<section id="items" hidden>
+  <h2>Add / Edit Item</h2>
+  <form onsubmit="saveItem(event)">
+    <input type="hidden" id="iid">
+    <input id="iname" placeholder="Item name" required>
+    <input id="icat" placeholder="Category (Smartphones, Laptops...)" required>
+    <input id="isub" placeholder="Subcategory (Android, Gaming...)" required>
+    <input type="number" id="iprice" placeholder="Price" required>
+    <input type="number" id="idisc" placeholder="Discount %" value="0">
+    <input type="number" id="istock" placeholder="Stock" required>
+    <input id="iicon" placeholder="Icon emoji (📱 💻 🎧)" value="📦">
+    <textarea id="idesc" placeholder="Description" required></textarea>
+    <button>Save Item</button>
+  </form>
+  <div id="itemList"></div>
+</section>
+
+<section id="customers" hidden>
+  <h2>Orders</h2><div id="allOrders"></div>
+  <h2>Customers Who Checked Out</h2><div id="custList"></div>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const STATUSES = ['Ordered', 'Packed', 'Shipped', 'Out for Delivery', 'Delivered', 'Cancelled'];
+const COUPONS = { TECH10: 10, NEWUSER: 5 };
+
+if (!db.get('ts_items')) db.set('ts_items', [
+  { id: 1, name: 'Galaxy A55', cat: 'Smartphones', sub: 'Android', price: 38999, disc: 10, stock: 8, icon: '📱', desc: '6.6" AMOLED, 8 GB RAM, 128 GB, 50 MP camera.' },
+  { id: 2, name: 'iPhone 15', cat: 'Smartphones', sub: 'iOS', price: 69900, disc: 5, stock: 5, icon: '📱', desc: '6.1" display, A16 chip, 128 GB.' },
+  { id: 3, name: 'IdeaPad Slim 5', cat: 'Laptops', sub: 'Thin and Light', price: 62990, disc: 12, stock: 4, icon: '💻', desc: 'Ryzen 7, 16 GB RAM, 512 GB SSD, 14" OLED.' },
+  { id: 4, name: 'TUF Gaming F15', cat: 'Laptops', sub: 'Gaming', price: 74990, disc: 8, stock: 3, icon: '💻', desc: 'Core i7, RTX 4050, 144 Hz display.' },
+  { id: 5, name: 'Galaxy Tab S9 FE', cat: 'Tablets', sub: 'Android', price: 36999, disc: 0, stock: 6, icon: '📟', desc: '10.9" display with S Pen.' },
+  { id: 6, name: 'Rockerz 450 Headphones', cat: 'Accessories', sub: 'Audio', price: 1999, disc: 25, stock: 20, icon: '🎧', desc: 'Wireless, 15 hour battery.' },
+  { id: 7, name: '20000 mAh Power Bank', cat: 'Accessories', sub: 'Charging', price: 2199, disc: 15, stock: 0, icon: '🔋', desc: '22.5 W fast charging, two USB ports.' }
+]);
+let me = db.get('ts_session', null), selCat = '', selSub = '', curItem = null;
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Shop']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['items', 'Items'], ['customers', 'Orders & Customers']);
+  else b.push(['cart', 'Cart (' + db.get('ts_cart_' + me.user, []).length + ')'], ['wishlist', 'Wish List'], ['orders', 'My Orders']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+const finalPrice = i => Math.round(i.price * (100 - i.disc) / 100);
+const priceHtml = i => i.disc ? `<s>Rs. ${i.price}</s> <b>Rs. ${finalPrice(i)}</b> <span class="off">${i.disc}% off</span>` : `<b>Rs. ${i.price}</b>`;
+const item = id => db.get('ts_items').find(i => i.id === id);
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('ts_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, pass: $('rp').value });
+  db.set('ts_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('ts_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('ts_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'items' : 'home');
+}
+function logout() { me = null; localStorage.removeItem('ts_session'); nav(); show('home'); }
+
+// ---------- catalogue ----------
+function soldCount(cat) {
+  return db.get('ts_orders', []).flatMap(o => o.items).filter(x => (item(x.id) || {}).cat === cat).reduce((s, x) => s + x.qty, 0);
+}
+function card(i, extra = '') {
+  return `<div class="card"><div class="icon">${i.icon}</div><b>${i.name}</b><br>${i.cat} / ${i.sub}<br>${priceHtml(i)}<br>
+    ${i.stock > 0 ? 'In stock' : '<span class="off">Out of stock</span>'}<br><button onclick="openItem(${i.id})">Details</button>${extra}</div>`;
+}
+function r_home() {
+  const items = db.get('ts_items');
+  // most popular categories first (by quantity sold)
+  const cats = [...new Set(items.map(i => i.cat))].sort((a, b) => soldCount(b) - soldCount(a));
+  $('catBar').innerHTML = `<button onclick="pickCat('')">All</button>` + cats.map(c => `<button onclick="pickCat('${c}')">${c}</button>`).join('');
+  const subs = [...new Set(items.filter(i => !selCat || i.cat === selCat).map(i => i.sub))];
+  $('subBar').innerHTML = subs.map(s => `<button onclick="selSub='${s}';r_home()">${s}</button>`).join('');
+  const q = $('q').value.toLowerCase();
+  const list = items.filter(i => (!selCat || i.cat === selCat) && (!selSub || i.sub === selSub) && (i.name + i.desc).toLowerCase().includes(q));
+  $('prodGrid').innerHTML = list.map(i => card(i)).join('') || '<p>No items found.</p>';
+  // personalised recommendations from browsing and purchases
+  if (me && me.role === 'user') {
+    const seen = db.get('ts_seen_' + me.user, []);
+    const bought = db.get('ts_orders', []).filter(o => o.user === me.user).flatMap(o => o.items.map(x => x.id));
+    const likedCats = [...new Set([...seen, ...bought].map(id => (item(id) || {}).cat))];
+    const reco = items.filter(i => likedCats.includes(i.cat) && !bought.includes(i.id)).slice(0, 4);
+    $('recoBox').innerHTML = reco.length ? '<h2>Recommended for You</h2><div class="grid">' + reco.map(i => card(i)).join('') + '</div>' : '';
+  } else $('recoBox').innerHTML = '';
+}
+function pickCat(c) { selCat = c; selSub = ''; r_home(); }
+function openItem(id) {
+  curItem = item(id);
+  if (me && me.role === 'user') { const s = db.get('ts_seen_' + me.user, []); if (!s.includes(id)) { s.push(id); db.set('ts_seen_' + me.user, s); } }
+  $('dBox').innerHTML = `<div class="icon">${curItem.icon}</div><h2>${curItem.name}</h2><p>${curItem.desc}</p><p>${curItem.cat} / ${curItem.sub}</p><p>${priceHtml(curItem)}</p>
+    <p>Availability: ${curItem.stock > 0 ? curItem.stock + ' in stock' : 'Out of stock'}</p>
+    ${curItem.stock > 0 ? `Qty <input type="number" id="dq" value="1" min="1" max="${curItem.stock}" style="width:70px"> <button onclick="addToCart()">Add to Cart</button>` : ''}
+    <button onclick="toggleWish(${curItem.id})">Add to Wish List</button>`;
+  const r = db.get('ts_reviews', []).filter(x => x.id === id);
+  $('dReviews').innerHTML = r.map(x => `<p>${'★'.repeat(x.rate)} ${x.text} <i>- ${x.user}</i></p>`).join('') || '<p>No reviews yet.</p>';
+  $('rvForm').hidden = !(me && me.role === 'user');
+  show('detail');
+}
+function addReview(e) {
+  e.preventDefault();
+  const r = db.get('ts_reviews', []);
+  r.push({ id: curItem.id, user: me.user, rate: +$('rvR').value, text: $('rvT').value });
+  db.set('ts_reviews', r); e.target.reset(); openItem(curItem.id);
+}
+
+// ---------- cart ----------
+function needUser() { if (!me || me.role !== 'user') { alert('Please login first'); show('login'); return false; } return true; }
+function addToCart() {
+  if (!needUser()) return;
+  const cart = db.get('ts_cart_' + me.user, []), qty = +$('dq').value;
+  const line = cart.find(c => c.id === curItem.id);
+  const newQty = (line ? line.qty : 0) + qty;
+  if (newQty > curItem.stock) return alert('Only ' + curItem.stock + ' available');
+  if (line) line.qty = newQty; else cart.push({ id: curItem.id, qty });
+  db.set('ts_cart_' + me.user, cart); nav(); alert('Added to cart');
+}
+function cartTotal(cart, coupon) {
+  const sub = cart.reduce((s, c) => s + finalPrice(item(c.id)) * c.qty, 0);
+  const off = COUPONS[(coupon || '').toUpperCase()] || 0;
+  return { sub, off, total: Math.round(sub * (100 - off) / 100) };
+}
+function r_cart() {
+  const cart = db.get('ts_cart_' + me.user, []).filter(c => item(c.id));
+  $('cartBox').innerHTML = cart.length ? '<table><tr><th>Item</th><th>Price</th><th>Qty</th><th>Total</th><th></th></tr>' +
+    cart.map(c => { const i = item(c.id); return `<tr><td>${i.icon} ${i.name}</td><td>Rs. ${finalPrice(i)}</td>
+    <td><input type="number" min="1" max="${i.stock}" value="${c.qty}" style="width:60px" onchange="setQty(${c.id}, this.value)"></td>
+    <td>Rs. ${finalPrice(i) * c.qty}</td><td><button class="red" onclick="removeCart(${c.id})">Remove</button></td></tr>`; }).join('') + '</table>' : '<p>Your cart is empty.</p>';
+  const t = cartTotal(cart, $('coC').value);
+  $('coTotal').textContent = `Subtotal Rs. ${t.sub}${t.off ? ` | Coupon ${t.off}% off` : ''} | Total Rs. ${t.total}`;
+  $('coC').oninput = r_cart;
+}
+function setQty(id, q) {
+  const cart = db.get('ts_cart_' + me.user, []), i = item(id);
+  cart.find(c => c.id === id).qty = Math.min(Math.max(1, +q), i.stock);
+  db.set('ts_cart_' + me.user, cart); r_cart();
+}
+function removeCart(id) { db.set('ts_cart_' + me.user, db.get('ts_cart_' + me.user, []).filter(c => c.id !== id)); nav(); r_cart(); }
+function checkout(e) {
+  e.preventDefault();
+  const cart = db.get('ts_cart_' + me.user, []).filter(c => item(c.id));
+  if (!cart.length) return alert('Cart is empty');
+  const items = db.get('ts_items');
+  for (const c of cart) if (items.find(i => i.id === c.id).stock < c.qty) return alert('Not enough stock for ' + item(c.id).name);
+  cart.forEach(c => items.find(i => i.id === c.id).stock -= c.qty);
+  db.set('ts_items', items);
+  const t = cartTotal(cart, $('coC').value);
+  const orders = db.get('ts_orders', []);
+  orders.push({ id: 'TS' + String(Date.now()).slice(-6), user: me.user, name: $('coN').value, phone: $('coPh').value, addr: $('coA').value,
+    items: cart.map(c => ({ id: c.id, name: item(c.id).name, qty: c.qty, price: finalPrice(item(c.id)) })), total: t.total, pay: $('coP').value, status: 'Ordered', date: today() });
+  db.set('ts_orders', orders); db.set('ts_cart_' + me.user, []);
+  e.target.reset(); nav(); alert('Order placed. Confirmation sent by email.'); show('orders');
+}
+function orderTable(list, admin) {
+  if (!list.length) return '<p>No orders yet.</p>';
+  return '<table><tr><th>Order</th><th>Date</th>' + (admin ? '<th>Customer</th>' : '') + '<th>Items</th><th>Total</th><th>Status</th></tr>' +
+    list.map(o => `<tr><td>${o.id}</td><td>${o.date}</td>${admin ? `<td>${o.name}<br>${o.phone}<br>${o.addr}</td>` : ''}
+    <td>${o.items.map(x => x.name + ' x' + x.qty).join('<br>')}</td><td>Rs. ${o.total}<br>${o.pay}</td><td>` +
+    (admin ? `<select onchange="setOrder('${o.id}', this.value)">${STATUSES.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select>` : o.status) +
+    '</td></tr>').join('') + '</table>';
+}
+function r_orders() { $('orderBox').innerHTML = orderTable(db.get('ts_orders', []).filter(o => o.user === me.user).reverse()); }
+
+// ---------- wish list ----------
+function toggleWish(id) {
+  if (!needUser()) return;
+  let w = db.get('ts_wish_' + me.user, []);
+  w = w.includes(id) ? w.filter(x => x !== id) : [...w, id];
+  db.set('ts_wish_' + me.user, w); alert(w.includes(id) ? 'Added to wish list' : 'Removed from wish list');
+}
+function r_wishlist() {
+  const w = db.get('ts_wish_' + me.user, []).map(item).filter(Boolean);
+  $('wishGrid').innerHTML = w.map(i => card(i, `<button class="red" onclick="toggleWish(${i.id}); r_wishlist()">Remove</button>`)).join('') || '<p>Your wish list is empty.</p>';
+}
+
+// ---------- admin ----------
+const iFields = { iname: 'name', icat: 'cat', isub: 'sub', iprice: 'price', idisc: 'disc', istock: 'stock', iicon: 'icon', idesc: 'desc' };
+function r_items() {
+  $('itemList').innerHTML = '<table><tr><th>Item</th><th>Category</th><th>Price</th><th>Discount</th><th>Stock</th><th></th></tr>' +
+    db.get('ts_items').map(i => `<tr><td>${i.icon} ${i.name}</td><td>${i.cat} / ${i.sub}</td><td>Rs. ${i.price}</td><td>${i.disc}%</td><td>${i.stock}</td>
+    <td><button onclick="editItem(${i.id})">Edit</button><button class="red" onclick="delItem(${i.id})">Remove</button></td></tr>`).join('') + '</table>';
+}
+function saveItem(e) {
+  e.preventDefault();
+  const items = db.get('ts_items'), data = {};
+  for (const k in iFields) data[iFields[k]] = $(k).value;
+  ['price', 'disc', 'stock'].forEach(k => data[k] = +data[k]);
+  if ($('iid').value) Object.assign(items.find(i => i.id == $('iid').value), data); else items.push({ id: Date.now(), ...data });
+  db.set('ts_items', items); e.target.reset(); $('iid').value = ''; r_items();
+}
+function editItem(id) { const i = item(id); $('iid').value = id; for (const k in iFields) $(k).value = i[iFields[k]]; window.scrollTo(0, 0); }
+function delItem(id) { if (confirm('Remove this item?')) { db.set('ts_items', db.get('ts_items').filter(i => i.id !== id)); r_items(); } }
+function setOrder(id, st) { const o = db.get('ts_orders', []); o.find(x => x.id === id).status = st; db.set('ts_orders', o); }
+function r_customers() {
+  const o = db.get('ts_orders', []);
+  $('allOrders').innerHTML = orderTable([...o].reverse(), true);
+  const users = db.get('ts_users', []);
+  const buyers = [...new Set(o.map(x => x.user))];
+  $('custList').innerHTML = buyers.length ? '<table><tr><th>Username</th><th>Name</th><th>Email</th><th>Orders</th><th>Total spent</th></tr>' +
+    buyers.map(u => { const usr = users.find(x => x.user === u) || {}, mine = o.filter(x => x.user === u);
+      return `<tr><td>${u}</td><td>${usr.name || '-'}</td><td>${usr.email || '-'}</td><td>${mine.length}</td><td>Rs. ${mine.reduce((s, x) => s + x.total, 0)}</td></tr>`; }).join('') + '</table>'
+    : '<p>No customers have checked out yet.</p>';
+}
+
+nav(); show('home');
+</script>
+</body>
+</html>

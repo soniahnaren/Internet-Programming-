@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exp 4 - Railway Reservation System</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #eef1f6; color: #1b2233; font-size: 14px; }
+  header { background: #233a74; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header h1 { margin: 0 auto 0 0; font-size: 21px; }
+  button { background: #233a74; color: #fff; border: 0; padding: 7px 12px; border-radius: 3px; cursor: pointer; margin: 2px; }
+  header button { background: #ffd34d; color: #233a74; }
+  .red { background: #a52a2a; }
+  main { max-width: 980px; margin: 20px auto; padding: 0 15px; }
+  form, .box { background: #fff; padding: 15px; border: 1px solid #c9d0de; max-width: 500px; margin-bottom: 15px; }
+  input, select { width: 100%; padding: 7px; margin: 4px 0; box-sizing: border-box; }
+  table { width: 100%; border-collapse: collapse; background: #fff; margin: 10px 0; }
+  th, td { border: 1px solid #c9d0de; padding: 6px; text-align: left; }
+  th { background: #dfe5f2; }
+  .row { display: flex; gap: 6px; }
+  .ticket { background: #fff; border: 2px dashed #233a74; padding: 15px; max-width: 600px; }
+  @media print { header, button, .noprint { display: none; } }
+</style>
+</head>
+<body>
+<header><h1>Railway Reservation</h1><nav id="nav"></nav></header>
+<main>
+
+<section id="home">
+  <h2>Search Trains</h2>
+  <form onsubmit="searchTrains(event)">
+    From station <input id="sf" placeholder="e.g. Coimbatore" required>
+    To station <input id="st" placeholder="e.g. Chennai" required>
+    Date of journey <input type="date" id="sd" required>
+    <button>Find Trains</button>
+  </form>
+  <div id="trainRes"></div>
+  <h2>PNR Status</h2>
+  <form onsubmit="pnrStatus(event)"><input id="pnrIn" placeholder="Enter 10-digit PNR" required><button>Check Status</button></form>
+  <div id="pnrRes"></div>
+</section>
+
+<section id="book" hidden>
+  <h2>Passenger Details</h2>
+  <div class="box" id="bookInfo"></div>
+  <form onsubmit="confirmBooking(event)">
+    <div id="paxRows"></div>
+    <button type="button" onclick="addPax()">+ Add Passenger</button>
+    <p>Payment mode
+      <select id="payMode"><option>Online - Card</option><option>Online - UPI</option><option>Offline - Pay at Counter</option></select></p>
+    <p id="fareInfo"></p>
+    <button>Pay and Generate Ticket</button>
+  </form>
+</section>
+
+<section id="ticketView" hidden>
+  <div class="ticket" id="ticketBox"></div>
+  <button onclick="window.print()">Print Ticket</button>
+</section>
+
+<section id="login" hidden>
+  <h2>Login</h2>
+  <form onsubmit="login(event)">
+    <input id="lu" placeholder="Username" required>
+    <input id="lp" type="password" placeholder="Password" required>
+    <button>Login</button>
+    <p><small>Admin login: admin / admin123</small></p>
+  </form>
+</section>
+
+<section id="register" hidden>
+  <h2>Register</h2>
+  <form onsubmit="register(event)">
+    <input id="rn" placeholder="Full name" required>
+    <input id="ru" placeholder="Username" required>
+    <input id="re" type="email" placeholder="Email" required>
+    <input id="rp" type="password" placeholder="Password" required>
+    <button>Register</button>
+  </form>
+</section>
+
+<section id="dashboard" hidden>
+  <h2>My Reservations</h2>
+  <div id="myList"></div>
+  <h3>Cancel Ticket</h3>
+  <form onsubmit="cancelRequest(event)"><input id="cpnr" placeholder="PNR number" required><button class="red">Request Cancellation</button></form>
+</section>
+
+<!-- ADMIN -->
+<section id="adminTrains" hidden>
+  <h2>Add / Update Train</h2>
+  <form onsubmit="saveTrain(event)">
+    <input id="tno" placeholder="Train number" required>
+    <input id="tname" placeholder="Train name" required>
+    <div class="row"><input id="tfrom" placeholder="From" required><input id="tto" placeholder="To" required></div>
+    <input id="tvia" placeholder="Via stations (comma separated)">
+    <div class="row"><input type="time" id="tdep" required><input type="time" id="tarr" required></div>
+    <input id="tzone" placeholder="Zone (e.g. Southern Railway)" required>
+    <b>Seats and fare by class</b>
+    <div class="row"><input type="number" id="slS" placeholder="SL seats" required><input type="number" id="slF" placeholder="SL fare" required></div>
+    <div class="row"><input type="number" id="a3S" placeholder="3A seats" required><input type="number" id="a3F" placeholder="3A fare" required></div>
+    <div class="row"><input type="number" id="a2S" placeholder="2A seats" required><input type="number" id="a2F" placeholder="2A fare" required></div>
+    Weekend fare increase % <input type="number" id="tweek" value="10">
+    <button>Save Train</button>
+  </form>
+  <div id="trainList"></div>
+</section>
+
+<section id="adminBook" hidden>
+  <h2>Payments and Bookings</h2><div id="payList"></div>
+  <h2>Cancellation Requests</h2><div id="cancelList"></div>
+  <h2>Refund Rules</h2>
+  <form onsubmit="saveRules(event)">
+    2 or more days before journey (%) <input type="number" id="r2">
+    1 day before journey (%) <input type="number" id="r1">
+    On journey day (%) <input type="number" id="r0">
+    <button>Save Rules</button>
+  </form>
+</section>
+</main>
+
+<script>
+const db = {
+  get: (k, d) => JSON.parse(localStorage.getItem(k)) ?? d,
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+};
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0, 10);
+const CLASSES = { SL: 'Sleeper', '3A': 'AC 3 Tier', '2A': 'AC 2 Tier' };
+const RAC_LIMIT = 4;
+
+if (!db.get('rr_trains')) db.set('rr_trains', [
+  { no: '12676', name: 'Kovai Express', from: 'Coimbatore', to: 'Chennai', via: 'Tiruppur, Erode, Salem, Katpadi', dep: '15:15', arr: '23:00', zone: 'Southern Railway', weekend: 10,
+    cls: { SL: { seats: 6, fare: 315 }, '3A': { seats: 4, fare: 810 }, '2A': { seats: 2, fare: 1150 } } },
+  { no: '12244', name: 'Shatabdi Express', from: 'Coimbatore', to: 'Chennai', via: 'Erode, Salem', dep: '06:10', arr: '13:20', zone: 'Southern Railway', weekend: 10,
+    cls: { SL: { seats: 0, fare: 0 }, '3A': { seats: 6, fare: 950 }, '2A': { seats: 4, fare: 1400 } } }
+]);
+if (!db.get('rr_rules')) db.set('rr_rules', { d2: 75, d1: 50, d0: 25 });
+let me = db.get('rr_session', null), sel = null;
+
+function show(id) {
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== id);
+  if (window['r_' + id]) window['r_' + id]();
+}
+function nav() {
+  let b = [['home', 'Search / PNR']];
+  if (!me) b.push(['login', 'Login'], ['register', 'Register']);
+  else if (me.role === 'admin') b.push(['adminTrains', 'Trains & Fares'], ['adminBook', 'Payments & Refunds']);
+  else b.push(['dashboard', 'My Reservations']);
+  $('nav').innerHTML = b.map(x => `<button onclick="show('${x[0]}')">${x[1]}</button>`).join('') +
+    (me ? `<button onclick="logout()">Logout</button>` : '');
+}
+
+// ---------- auth ----------
+function register(e) {
+  e.preventDefault();
+  const users = db.get('rr_users', []);
+  if (users.find(u => u.user === $('ru').value)) return alert('Username already taken');
+  users.push({ name: $('rn').value, user: $('ru').value, email: $('re').value, pass: $('rp').value });
+  db.set('rr_users', users); alert('Registered. Please login.'); e.target.reset(); show('login');
+}
+function login(e) {
+  e.preventDefault();
+  const u = $('lu').value, p = $('lp').value;
+  if (u === 'admin' && p === 'admin123') me = { user: 'admin', role: 'admin' };
+  else if (db.get('rr_users', []).find(x => x.user === u && x.pass === p)) me = { user: u, role: 'user' };
+  else return alert('Wrong username or password');
+  db.set('rr_session', me); e.target.reset(); nav(); show(me.role === 'admin' ? 'adminTrains' : 'home');
+}
+function logout() { me = null; localStorage.removeItem('rr_session'); nav(); show('home'); }
+
+// ---------- seat allocation (CNF -> RAC -> WL) ----------
+function allocate(trainNo, date, cls) {
+  const train = db.get('rr_trains').find(t => t.no === trainNo);
+  const list = db.get('rr_bookings', []);
+  let n = 0;
+  list.filter(b => b.trainNo === trainNo && b.date === date && b.cls === cls && b.status !== 'Cancelled')
+    .sort((a, b) => a.pnr - b.pnr)
+    .forEach(b => b.pax.forEach(p => {
+      n++;
+      const seats = train.cls[cls].seats;
+      p.status = n <= seats ? `CNF / ${cls}-${n}` : n <= seats + RAC_LIMIT ? `RAC ${n - seats}` : `WL ${n - seats - RAC_LIMIT}`;
+    }));
+  db.set('rr_bookings', list);
+}
+function availability(t, date, cls) {
+  const used = db.get('rr_bookings', []).filter(b => b.trainNo === t.no && b.date === date && b.cls === cls && b.status !== 'Cancelled')
+    .reduce((s, b) => s + b.pax.length, 0);
+  const free = t.cls[cls].seats - used;
+  if (free > 0) return 'AVAILABLE ' + free;
+  if (free > -RAC_LIMIT) return 'RAC ' + (RAC_LIMIT + free);
+  return 'WL ' + (-free - RAC_LIMIT + 1);
+}
+function fareFor(t, cls, date) {
+  const day = new Date(date).getDay();
+  const base = t.cls[cls].fare;
+  return day === 0 || day === 6 ? Math.round(base * (1 + t.weekend / 100)) : base;
+}
+
+// ---------- search & booking ----------
+function searchTrains(e) {
+  e.preventDefault();
+  const f = $('sf').value.toLowerCase(), to = $('st').value.toLowerCase(), d = $('sd').value;
+  if (d < today()) return alert('Journey date cannot be in the past');
+  const res = db.get('rr_trains').filter(t => t.from.toLowerCase() === f && t.to.toLowerCase() === to);
+  $('trainRes').innerHTML = res.length ? '<table><tr><th>Train</th><th>Departs / Arrives</th><th>Via</th>' +
+    Object.keys(CLASSES).map(c => `<th>${c}</th>`).join('') + '</tr>' +
+    res.map(t => `<tr><td>${t.no}<br>${t.name}</td><td>${t.dep} / ${t.arr}</td><td>${t.via}</td>` +
+      Object.keys(CLASSES).map(c => t.cls[c].seats ? `<td>${availability(t, d, c)}<br>Rs. ${fareFor(t, c, d)}<br>
+      <button onclick="startBook('${t.no}','${d}','${c}')">Book</button></td>` : '<td>-</td>').join('') + '</tr>').join('') + '</table>'
+    : '<p>No trains found between these stations.</p>';
+}
+function startBook(no, date, cls) {
+  if (!me || me.role !== 'user') { alert('Please login with valid credentials to reserve'); return show('login'); }
+  const t = db.get('rr_trains').find(x => x.no === no);
+  sel = { t, date, cls };
+  $('bookInfo').innerHTML = `<b>${t.no} ${t.name}</b><br>${t.from} to ${t.to} on ${date}<br>Class: ${CLASSES[cls]} | Status now: ${availability(t, date, cls)}`;
+  $('paxRows').innerHTML = ''; addPax(); show('book');
+}
+function addPax() {
+  if ($('paxRows').children.length >= 6) return alert('Maximum 6 passengers per ticket');
+  const div = document.createElement('div');
+  div.className = 'row';
+  div.innerHTML = `<input placeholder="Passenger name" required><input type="number" placeholder="Age" min="1" required>
+    <select><option>M</option><option>F</option></select>`;
+  $('paxRows').appendChild(div); updateFare();
+}
+function updateFare() { $('fareInfo').textContent = 'Total fare: Rs. ' + fareFor(sel.t, sel.cls, sel.date) * $('paxRows').children.length; }
+function confirmBooking(e) {
+  e.preventDefault();
+  const pax = [...$('paxRows').children].map(r => { const i = r.querySelectorAll('input,select'); return { name: i[0].value, age: i[1].value, gender: i[2].value }; });
+  const pnr = String(Date.now()).slice(-10);
+  const list = db.get('rr_bookings', []);
+  list.push({ pnr, user: me.user, trainNo: sel.t.no, date: sel.date, cls: sel.cls, pax,
+    amount: fareFor(sel.t, sel.cls, sel.date) * pax.length, payMode: $('payMode').value, bookedOn: today(), status: 'Booked', refund: 0 });
+  db.set('rr_bookings', list);
+  allocate(sel.t.no, sel.date, sel.cls);
+  alert('Payment successful. Your PNR is ' + pnr + '. Confirmation email sent.');
+  showTicket(pnr);
+}
+function showTicket(pnr) {
+  const b = db.get('rr_bookings', []).find(x => x.pnr === pnr);
+  const t = db.get('rr_trains').find(x => x.no === b.trainNo);
+  $('ticketBox').innerHTML = `<h2>E-Ticket</h2><p><b>PNR: ${b.pnr}</b> | Status: ${b.status}</p>
+    <p>${t.no} ${t.name}<br>${t.from} (${t.dep}) to ${t.to} (${t.arr})<br>Date: ${b.date} | Class: ${CLASSES[b.cls]}</p>
+    <table><tr><th>Name</th><th>Age</th><th>Gender</th><th>Seat / Status</th></tr>` +
+    b.pax.map(p => `<tr><td>${p.name}</td><td>${p.age}</td><td>${p.gender}</td><td>${b.status === 'Cancelled' ? 'Cancelled' : p.status}</td></tr>`).join('') +
+    `</table><p>Fare paid: Rs. ${b.amount} (${b.payMode})${b.refund ? ' | Refunded: Rs. ' + b.refund : ''}</p>`;
+  show('ticketView');
+}
+function pnrStatus(e) {
+  e.preventDefault();
+  const b = db.get('rr_bookings', []).find(x => x.pnr === $('pnrIn').value.trim());
+  $('pnrRes').innerHTML = b ? `<table><tr><th>Passenger</th><th>Status</th></tr>` +
+    b.pax.map(p => `<tr><td>${p.name}</td><td>${b.status === 'Cancelled' ? 'Cancelled' : p.status}</td></tr>`).join('') +
+    `</table><p>Train ${b.trainNo} on ${b.date}, class ${b.cls}. Booking: ${b.status}</p>` : '<p>PNR not found.</p>';
+}
+function r_dashboard() {
+  const mine = db.get('rr_bookings', []).filter(b => b.user === me.user);
+  $('myList').innerHTML = mine.length ? '<table><tr><th>PNR</th><th>Train</th><th>Date</th><th>Class</th><th>Passengers</th><th>Amount</th><th>Status</th><th></th></tr>' +
+    mine.map(b => `<tr><td>${b.pnr}</td><td>${b.trainNo}</td><td>${b.date}</td><td>${b.cls}</td><td>${b.pax.length}</td><td>Rs. ${b.amount}</td>
+    <td>${b.status}${b.refund ? ' (refund Rs. ' + b.refund + ')' : ''}</td><td><button onclick="showTicket('${b.pnr}')">View / Print</button></td></tr>`).join('') + '</table>'
+    : '<p>No reservations yet.</p>';
+}
+function cancelRequest(e) {
+  e.preventDefault();
+  const list = db.get('rr_bookings', []);
+  const b = list.find(x => x.pnr === $('cpnr').value.trim() && x.user === me.user);
+  if (!b) return alert('PNR not found in your bookings');
+  if (b.status !== 'Booked') return alert('This ticket is already ' + b.status);
+  b.status = 'Cancel Requested'; db.set('rr_bookings', list);
+  e.target.reset(); alert('Cancellation request sent to admin'); r_dashboard();
+}
+
+// ---------- admin ----------
+function r_adminTrains() {
+  $('trainList').innerHTML = '<table><tr><th>No</th><th>Name</th><th>Route</th><th>Zone</th><th>SL</th><th>3A</th><th>2A</th><th></th></tr>' +
+    db.get('rr_trains').map(t => `<tr><td>${t.no}</td><td>${t.name}</td><td>${t.from} - ${t.to}<br>${t.dep}-${t.arr}</td><td>${t.zone}</td>` +
+      Object.keys(CLASSES).map(c => `<td>${t.cls[c].seats} seats<br>Rs. ${t.cls[c].fare}</td>`).join('') +
+      `<td><button onclick="editTrain('${t.no}')">Edit</button><button class="red" onclick="delTrain('${t.no}')">Delete</button></td></tr>`).join('') + '</table>';
+}
+function saveTrain(e) {
+  e.preventDefault();
+  const list = db.get('rr_trains').filter(t => t.no !== $('tno').value);
+  list.push({ no: $('tno').value, name: $('tname').value, from: $('tfrom').value, to: $('tto').value, via: $('tvia').value,
+    dep: $('tdep').value, arr: $('tarr').value, zone: $('tzone').value, weekend: +$('tweek').value,
+    cls: { SL: { seats: +$('slS').value, fare: +$('slF').value }, '3A': { seats: +$('a3S').value, fare: +$('a3F').value }, '2A': { seats: +$('a2S').value, fare: +$('a2F').value } } });
+  db.set('rr_trains', list); e.target.reset(); alert('Train saved'); r_adminTrains();
+}
+function editTrain(no) {
+  const t = db.get('rr_trains').find(x => x.no === no);
+  $('tno').value = t.no; $('tname').value = t.name; $('tfrom').value = t.from; $('tto').value = t.to; $('tvia').value = t.via;
+  $('tdep').value = t.dep; $('tarr').value = t.arr; $('tzone').value = t.zone; $('tweek').value = t.weekend;
+  $('slS').value = t.cls.SL.seats; $('slF').value = t.cls.SL.fare; $('a3S').value = t.cls['3A'].seats; $('a3F').value = t.cls['3A'].fare;
+  $('a2S').value = t.cls['2A'].seats; $('a2F').value = t.cls['2A'].fare;
+}
+function delTrain(no) { if (confirm('Delete train ' + no + '?')) { db.set('rr_trains', db.get('rr_trains').filter(t => t.no !== no)); r_adminTrains(); } }
+
+function refundPercent(date) {
+  const r = db.get('rr_rules');
+  const days = Math.round((new Date(date) - new Date(today())) / 86400000);
+  return days >= 2 ? r.d2 : days === 1 ? r.d1 : days === 0 ? r.d0 : 0;
+}
+function r_adminBook() {
+  const list = db.get('rr_bookings', []);
+  $('payList').innerHTML = '<table><tr><th>PNR</th><th>User</th><th>Train</th><th>Date</th><th>Amount</th><th>Payment</th><th>Booked on</th><th>Status</th></tr>' +
+    list.map(b => `<tr><td>${b.pnr}</td><td>${b.user}</td><td>${b.trainNo}</td><td>${b.date}</td><td>Rs. ${b.amount}</td><td>${b.payMode}</td><td>${b.bookedOn}</td><td>${b.status}</td></tr>`).join('') + '</table>';
+  const req = list.filter(b => b.status === 'Cancel Requested');
+  $('cancelList').innerHTML = req.length ? '<table><tr><th>PNR</th><th>Fare</th><th>Refund %</th><th>Refund amount</th><th></th></tr>' +
+    req.map(b => { const p = refundPercent(b.date); return `<tr><td>${b.pnr}</td><td>Rs. ${b.amount}</td><td>${p}%</td><td>Rs. ${Math.round(b.amount * p / 100)}</td>
+    <td><button onclick="approveRefund('${b.pnr}')">Approve Refund</button></td></tr>`; }).join('') + '</table>' : '<p>No pending requests.</p>';
+  const r = db.get('rr_rules'); $('r2').value = r.d2; $('r1').value = r.d1; $('r0').value = r.d0;
+}
+function approveRefund(pnr) {
+  const list = db.get('rr_bookings', []);
+  const b = list.find(x => x.pnr === pnr);
+  b.refund = Math.round(b.amount * refundPercent(b.date) / 100);
+  b.status = 'Cancelled';
+  db.set('rr_bookings', list);
+  allocate(b.trainNo, b.date, b.cls);   // move RAC / WL passengers up
+  alert('Rs. ' + b.refund + ' refunded to passenger'); r_adminBook();
+}
+function saveRules(e) {
+  e.preventDefault();
+  db.set('rr_rules', { d2: +$('r2').value, d1: +$('r1').value, d0: +$('r0').value }); alert('Refund rules saved'); r_adminBook();
+}
+
+nav(); show('home');
+</script>
+</body>
+</html>
