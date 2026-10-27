@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>ComplainEase</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>ComplainEase</h2>
+<div class=box>Login as <select id=r onchange=show()><option>User<option>Officer</select></div>
+<div id=user class=box><h3>Post Complaint</h3>
+<input id=t placeholder="Title"><input id=loc placeholder="Location"><br><textarea id=d placeholder="Description" rows=3 cols=40></textarea><br>
+<button onclick=post()>Submit Complaint</button></div>
+<div class=box><h3>Complaints</h3><div id=list></div></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+function post(){let c=L('c');c.push({t:$('t').value,loc:$('loc').value,d:$('d').value,status:'Pending',proof:'',fb:''});S('c',c);show()}
+function upd(i,k,v){let c=L('c');c[i][k]=v;S('c',c);show()}
+function show(){let o=$('r').value=='Officer';$('user').hidden=o;
+ $('list').innerHTML='<table><tr><th>Title<th>Location<th>Description<th>Status<th>Proof of work<th>Feedback</tr>'+L('c').map((x,i)=>`<tr><td>${x.t}
+ <td><a target=_blank href="https://www.google.com/maps?q=${x.loc}">${x.loc}</a><td>${x.d}
+ <td>${o?`<select onchange="upd(${i},'status',this.value)"><option ${x.status=='Pending'?'selected':''}>Pending<option ${x.status=='In Progress'?'selected':''}>In Progress<option ${x.status=='Resolved'?'selected':''}>Resolved</select>`:x.status}
+ <td>${o?`<input value="${x.proof}" onchange="upd(${i},'proof',this.value)">`:x.proof}
+ <td>${o?x.fb:`<input value="${x.fb}" onchange="upd(${i},'fb',this.value)">`}</tr>`).join('')+'</table>'}
+show()
+</script></body></html>

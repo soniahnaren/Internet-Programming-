@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>ReNewMarket Admin</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>ReNewMarket - Admin Panel</h2>
+<div class=box><h3>User Management</h3><input id=usersN placeholder="User name"><button onclick="add('users')">Add</button><ul id=usersL></ul></div>
+<div class=box><h3>Category Management</h3><input id=categoriesN placeholder="Category"><button onclick="add('categories')">Add</button><ul id=categoriesL></ul></div>
+<div class=box><h3>Commodity Management</h3><input id=commoditiesN placeholder="Commodity"><input id=commoditiesP placeholder="Price"><button onclick="add('commodities')">Add</button><ul id=commoditiesL></ul></div>
+<div class=box><h3>Order Management</h3><input id=ordersN placeholder="Order item"><button onclick="add('orders')">Add Order</button><ul id=ordersL></ul></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+function add(k){let a=L(k);a.push({name:$(k+'N').value,price:$(k+'P')?$(k+'P').value:'',status:'Shipped'});S(k,a);draw()}
+function del(k,i){let a=L(k);a.splice(i,1);S(k,a);draw()}
+function edit(k,i){let a=L(k),v=prompt('New name',a[i].name);if(v){a[i].name=v;S(k,a);draw()}}
+function st(i,v){let a=L('orders');a[i].status=v;S('orders',a);draw()}
+function draw(){
+ for(let k of ['users','categories','commodities'])
+  $(k+'L').innerHTML=L(k).map((x,i)=>`<li>${x.name} ${x.price}
+  <button onclick="edit('${k}',${i})">Edit</button><button onclick="del('${k}',${i})">Delete</button></li>`).join('');
+ $('ordersL').innerHTML=L('orders').map((x,i)=>`<li>${x.name}
+  <select onchange="st(${i},this.value)"><option ${x.status=='Shipped'?'selected':''}>Shipped<option ${x.status=='Received'?'selected':''}>Received</select>
+  <button onclick="del('orders',${i})">Delete</button></li>`).join('')}
+draw()
+</script></body></html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>AgriMart</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>AgriMart</h2>
+<div class=box><h3>Farmer - Add Product</h3><input id=n placeholder="Product"><input id=p type=number placeholder="Price"><button onclick=addP()>Add Product</button></div>
+<div class=box><h3>Farmer - Manage Orders</h3><div id=fo></div></div>
+<div class=box><h3>Public - Search &amp; Buy</h3><input id=q placeholder="Search product" oninput=show()><div id=pl></div></div>
+<div class=box><h3>My Cart</h3><div id=cart></div>Shipping address <input id=ad> <button onclick=order()>Order</button></div>
+<div class=box><h3>My Orders</h3><div id=mo></div></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let cart=[];
+function addP(){let a=L('prod');a.push({n:$('n').value,p:+$('p').value});S('prod',a);show()}
+function delP(i){let a=L('prod');a.splice(i,1);S('prod',a);show()}
+function add(i){cart.push(L('prod')[i]);show()}
+function order(){if(!cart.length||!$('ad').value)return alert('Cart empty or address missing');
+ let o=L('ord');o.push({items:cart.map(x=>x.n).join(', '),total:cart.reduce((s,x)=>s+x.p,0),ad:$('ad').value,st:'Ordered'});S('ord',o);cart=[];show()}
+function st(i,v){let o=L('ord');o[i].st=v;S('ord',o);show()}
+function show(){let q=$('q').value.toLowerCase();
+ $('pl').innerHTML='<table><tr><th>Product<th>Price<th></tr>'+L('prod').map((x,i)=>x.n.toLowerCase().includes(q)?`<tr><td>${x.n}<td>Rs.${x.p}<td><button onclick="add(${i})">Add to Cart</button> <button onclick="delP(${i})">Delete</button></tr>`:'').join('')+'</table>';
+ $('cart').innerHTML=cart.map((x,i)=>`<p>${x.n} - Rs.${x.p} <button onclick="cart.splice(${i},1);show()">Remove</button></p>`).join('');
+ $('fo').innerHTML=L('ord').map((o,i)=>`<p>${o.items} | Rs.${o.total} | ${o.ad} <select onchange="st(${i},this.value)"><option ${o.st=='Ordered'?'selected':''}>Ordered<option ${o.st=='Shipped'?'selected':''}>Shipped<option ${o.st=='Delivered'?'selected':''}>Delivered</select></p>`).join('');
+ $('mo').innerHTML=L('ord').map(o=>`<p>${o.items} | Rs.${o.total} | Status: <b>${o.st}</b></p>`).join('')}
+show()
+</script></body></html>

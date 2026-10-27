@@ -1,0 +1,28 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Home Finder</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>Home Finder</h2>
+<div id=lg class=box>Username <input id=u> Password <input id=p type=password> <button onclick=login()>Login / Register</button></div>
+<div id=app hidden>
+<p>Welcome <b id=w></b> <button onclick=logout()>Logout</button></p>
+<div class=box><h3>Search Property</h3>
+Location <input id=loc> Max price <input id=max type=number> Type
+<select id=ty><option value="">Any<option>House<option>Land</select><br>
+<button onclick=search()>Search</button> <button onclick=save()>Save Criteria</button> <button onclick=load()>Use Saved Criteria</button></div>
+<table id=res></table></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const props=[{n:"2BHK Flat",loc:"Chennai",price:3500000,t:"House"},{n:"Plot 1200 sqft",loc:"Madurai",price:900000,t:"Land"},{n:"Villa",loc:"Chennai",price:9000000,t:"House"},{n:"Farm Land",loc:"Coimbatore",price:2000000,t:"Land"}];
+function login(){let us=JSON.parse(localStorage.users||'{}'),u=$('u').value,p=$('p').value;
+ if(!u||!p)return alert('Enter username and password');
+ if(!us[u])us[u]=p;                       // new user -> registered
+ if(us[u]!=p)return alert('Wrong password');
+ localStorage.users=JSON.stringify(us);localStorage.cur=u;init()}
+function logout(){localStorage.removeItem('cur');init()}
+function init(){let u=localStorage.cur;$('lg').hidden=!!u;$('app').hidden=!u;if(u){$('w').innerText=u;search()}}
+function crit(){return{loc:$('loc').value,max:$('max').value,ty:$('ty').value}}
+function save(){localStorage['c_'+localStorage.cur]=JSON.stringify(crit());alert('Criteria saved')}
+function load(){let c=JSON.parse(localStorage['c_'+localStorage.cur]||'{}');$('loc').value=c.loc||'';$('max').value=c.max||'';$('ty').value=c.ty||'';search()}
+function search(){let c=crit();
+ let r=props.filter(p=>p.loc.toLowerCase().includes(c.loc.toLowerCase())&&(!c.max||p.price<=c.max)&&(!c.ty||p.t==c.ty));
+ $('res').innerHTML='<tr><th>Name<th>Location<th>Price<th>Type<th>Map</tr>'+r.map(p=>`<tr><td>${p.n}<td>${p.loc}<td>${p.price}<td>${p.t}<td><a target=_blank href="https://www.google.com/maps?q=${p.loc}">View on Map</a></tr>`).join('')}
+init()
+</script></body></html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>EasyToll</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>EasyToll</h2>
+<div class=box><h3>User - eWallet</h3>Balance: Rs.<b id=bal></b><br>
+<input id=amt type=number placeholder="Amount"><button onclick=addMoney()>Add Money</button></div>
+<div class=box><h3>Buy Toll eTicket</h3>
+<select id=gate><option value=50>Gate A - Rs.50<option value=80>Gate B - Rs.80<option value=120>Gate C - Rs.120</select>
+Vehicle No <input id=veh> <button onclick=buy()>Buy Ticket</button><div id=tk></div></div>
+<div class=box><h3>Toll Gate - Verify Ticket</h3><input id=vid placeholder="Ticket ID"><button onclick=verify()>Verify</button> <b id=res></b></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let bal=+(localStorage.bal||0);
+function show(){$('bal').innerText=bal;$('tk').innerHTML='<table><tr><th>Ticket ID<th>Vehicle<th>Fare<th>Status</tr>'+L('tickets').map(t=>`<tr><td>${t.id}<td>${t.v}<td>${t.f}<td>${t.used?'Used':'Valid'}</tr>`).join('')+'</table>'}
+function addMoney(){bal+= +$('amt').value;localStorage.bal=bal;show()}
+function buy(){let f=+$('gate').value;if(!$('veh').value)return alert('Enter vehicle number');if(bal<f)return alert('Insufficient balance');
+ bal-=f;localStorage.bal=bal;let t=L('tickets');t.push({id:'TOLL'+Math.floor(Math.random()*90000+10000),v:$('veh').value,f,used:false});S('tickets',t);show()}
+function verify(){let t=L('tickets'),x=t.find(a=>a.id==$('vid').value);
+ if(!x)$('res').innerText='Invalid ticket';else if(x.used)$('res').innerText='Already used';else{x.used=true;S('tickets',t);$('res').innerText='Valid - Gate open';show()}}
+show()
+</script></body></html>

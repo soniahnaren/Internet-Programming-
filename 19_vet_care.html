@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Animal Care</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>Animal Health Care</h2>
+<div class=box>Login as <select id=r onchange=show()><option>Farmer<option>Doctor</select></div>
+<div id=user class=box><h3>Post Complaint</h3>
+<input id=a placeholder="Animal"><br><textarea id=s placeholder="Signs / symptoms" rows=3 cols=40></textarea><br>
+Photo/Video <input type=file id=f><br><button onclick=post()>Submit</button></div>
+<div class=box><h3>Complaints</h3><div id=list></div></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+function post(){let c=L('c');c.push({a:$('a').value,s:$('s').value,file:$('f').files[0]?$('f').files[0].name:'-',sol:'',paid:false});S('c',c);show()}
+function upd(i,k,v){let c=L('c');c[i][k]=v;S('c',c);show()}
+function show(){let d=$('r').value=='Doctor';$('user').hidden=d;
+ $('list').innerHTML='<table><tr><th>Animal<th>Symptoms<th>File<th>Doctor solution<th>Payment</tr>'+L('c').map((x,i)=>`<tr><td>${x.a}<td>${x.s}<td>${x.file}
+ <td>${d?`<input value="${x.sol}" placeholder="Prescription" onchange="upd(${i},'sol',this.value)">`:(x.sol||'Waiting for doctor')}
+ <td>${x.paid?'Paid':(d?'Not paid':`<button onclick="upd(${i},'paid',true)">Pay Fee</button>`)}</tr>`).join('')+'</table>'}
+show()
+</script></body></html>

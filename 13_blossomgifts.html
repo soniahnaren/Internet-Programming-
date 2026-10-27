@@ -1,0 +1,24 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>BlossomGifts</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>BlossomGifts</h2>
+<div class=box><b>Categories:</b> <span id=cats></span></div>
+<div id=list></div>
+<div class=box><h3>Cart</h3><div id=cart></div>
+Delivery date <input id=d type=date> <button onclick=order()>Place Order</button></div>
+<div class=box><h3>Order History</h3><div id=ord></div></div>
+<div class=box><h3>Admin - Add Item</h3><input id=n placeholder=Name><input id=c placeholder=Category><input id=p type=number placeholder=Price><button onclick=addItem()>Add</button></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+if(!L('items').length)S('items',[{n:"Red Roses",c:"Flowers",p:500},{n:"Tulip Bouquet",c:"Flowers",p:700},{n:"Teddy Bear",c:"Gifts",p:400},{n:"Gift Basket",c:"Gifts",p:900}]);
+let cart=[];
+function show(cat){let it=L('items');
+ $('cats').innerHTML=['All',...new Set(it.map(x=>x.c))].map(c=>`<button onclick="show('${c}')">${c}</button>`).join('');
+ $('list').innerHTML='<table><tr><th>Item<th>Category<th>Price<th></tr>'+it.map((x,i)=>(!cat||cat=='All'||x.c==cat)?`<tr><td>${x.n}<td>${x.c}<td>Rs.${x.p}<td><button onclick="add(${i})">Add to Cart</button> <button onclick="del(${i})">Delete</button></tr>`:'').join('')+'</table>';
+ showCart();$('ord').innerHTML=L('orders').map(o=>`<p>${o.items} | Rs.${o.total} | Delivery: ${o.d} | ${o.status}</p>`).join('')}
+function add(i){cart.push(L('items')[i]);showCart()}
+function showCart(){$('cart').innerHTML=cart.map((x,i)=>`<p>${x.n} - Rs.${x.p} <button onclick="cart.splice(${i},1);showCart()">Remove</button></p>`).join('')+'<b>Total: Rs.'+cart.reduce((s,x)=>s+ +x.p,0)+'</b>'}
+function order(){if(!cart.length||!$('d').value)return alert('Add items and choose delivery date');
+ let o=L('orders');o.push({items:cart.map(x=>x.n).join(', '),total:cart.reduce((s,x)=>s+ +x.p,0),d:$('d').value,status:'Order Confirmed'});S('orders',o);cart=[];show();alert('Order placed')}
+function addItem(){let it=L('items');it.push({n:$('n').value,c:$('c').value,p:$('p').value});S('items',it);show()}
+function del(i){let it=L('items');it.splice(i,1);S('items',it);show()}
+show()
+</script></body></html>

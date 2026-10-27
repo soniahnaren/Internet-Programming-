@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>VoteOnline</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>VoteOnline</h2>
+<div class=box><h3>1. Login with Voter ID</h3><input id=vid placeholder="V101 / V102 / V103"><button onclick=getOtp()>Get OTP</button></div>
+<div class=box id=s2 hidden><h3>2. OTP Verification</h3><input id=otp placeholder="Enter OTP"><button onclick=check()>Verify</button></div>
+<div class=box id=s3 hidden><h3>3. Select Candidate</h3>
+<label><input type=radio name=c value=Alice>Alice</label><br><label><input type=radio name=c value=Bob>Bob</label><br><label><input type=radio name=c value=Carol>Carol</label><br>
+<button onclick=vote()>Submit Vote</button></div>
+<div class=box><h3>Admin - Election Result</h3><button onclick=result()>Show Result</button><div id=res></div></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const voters=["V101","V102","V103"];let otp,vid;
+function getOtp(){vid=$('vid').value;if(!voters.includes(vid))return alert('Invalid Voter ID');
+ if(L('voted').includes(vid))return alert('You have already voted');
+ otp=Math.floor(1000+Math.random()*9000);alert('Your OTP is '+otp);$('s2').hidden=false}
+function check(){if($('otp').value!=otp)return alert('Wrong OTP');$('s3').hidden=false}
+function vote(){let c=document.querySelector('input[name=c]:checked');if(!c)return alert('Select a candidate');
+ let v=JSON.parse(localStorage.votes||'{}');v[c.value]=(v[c.value]||0)+1;localStorage.votes=JSON.stringify(v);
+ let d=L('voted');d.push(vid);S('voted',d);alert('Vote submitted. Thank you!');location.reload()}
+function result(){let v=JSON.parse(localStorage.votes||'{}');
+ $('res').innerHTML='<table><tr><th>Candidate<th>Votes</tr>'+["Alice","Bob","Carol"].map(c=>`<tr><td>${c}<td>${v[c]||0}</tr>`).join('')+'</table>'}
+</script></body></html>

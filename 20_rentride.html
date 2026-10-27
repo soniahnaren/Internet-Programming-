@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>RentRide</title><style>body{font-family:Arial;max-width:760px;margin:20px auto;padding:0 10px}input,select,button,textarea{margin:3px;padding:6px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px}.box{border:1px solid #bbb;padding:10px;margin:10px 0}</style></head><body>
+<h2>RentRide</h2>
+<div class=box>Login as <select id=r onchange=show()><option>User<option>Admin</select></div>
+<div id=adm class=box><h3>Admin - Add Vehicle</h3><input id=n placeholder="Name"><select id=t><option>Car<option>Truck<option>SUV</select><input id=p type=number placeholder="Price/day"><button onclick=addV()>Add Vehicle</button></div>
+<div id=usr class=box><h3>Search Vehicle</h3><select id=ft onchange=show()><option value="">All<option>Car<option>Truck<option>SUV</select><div id=vl></div>
+<h3>Book</h3><input id=cn placeholder="Your name"><input id=ph placeholder="Phone"><input id=days type=number placeholder="Days"><span id=sel></span></div>
+<div class=box><h3>Bookings</h3><div id=bk></div></div>
+<script>
+const $=i=>document.getElementById(i),L=k=>JSON.parse(localStorage.getItem(k)||"[]"),S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+if(!L('v').length)S('v',[{n:"Swift",t:"Car",p:1500},{n:"Tata Ace",t:"Truck",p:3000},{n:"Innova",t:"SUV",p:3500}]);
+function addV(){let v=L('v');v.push({n:$('n').value,t:$('t').value,p:+$('p').value});S('v',v);show()}
+function book(i){let v=L('v')[i],d=+$('days').value;if(!$('cn').value||!d)return alert('Enter name and days');
+ let b=L('b');b.push({v:v.n,cn:$('cn').value,ph:$('ph').value,d,total:d*v.p,st:'Pending'});S('b',b);show()}
+function approve(i){let b=L('b');b[i].st='Approved';S('b',b);show()}
+function show(){let a=$('r').value=='Admin',f=$('ft').value;$('adm').hidden=!a;$('usr').hidden=a;
+ $('vl').innerHTML='<table><tr><th>Vehicle<th>Type<th>Price/day<th></tr>'+L('v').map((x,i)=>(!f||x.t==f)?`<tr><td>${x.n}<td>${x.t}<td>Rs.${x.p}<td><button onclick="book(${i})">Book</button></tr>`:'').join('')+'</table>';
+ $('bk').innerHTML='<table><tr><th>Vehicle<th>Customer<th>Phone<th>Days<th>Total<th>Status</tr>'+L('b').map((x,i)=>`<tr><td>${x.v}<td>${x.cn}<td>${x.ph}<td>${x.d}<td>Rs.${x.total}<td>${x.st}${a&&x.st=='Pending'?` <button onclick="approve(${i})">Approve</button>`:''}</tr>`).join('')+'</table>'}
+show()
+</script></body></html>
